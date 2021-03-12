@@ -1,0 +1,21 @@
+
+2021-03-12
+==========
+
+1) Create a GitHub repository for this pipeline
+
+2) Test more autoencoders, mainly which precision they obtain for detecting seizures
+    With a trained autoencoder compute the reconstruction distance to all samples
+    Show one histogram per class with different colors per class (start with 2 classes, but use too 3 classes)
+    if 2 classes:
+        class 0: normal periods
+        class 1: seizure periods
+    if 3 classes:
+        class 0: normal periods
+        class 1: pre-seizure periods (X minutes, check different values of X)
+        class 2: seizure periods
+
+3) Create autoencoders based on convolutional layers to obtain embeddings to apply other classifiers
+
+4) Create encoder-decoders based on recurrent layers to obtain embeddings to apply other classifiers
+
