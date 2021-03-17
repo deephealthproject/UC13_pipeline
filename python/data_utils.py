@@ -24,7 +24,7 @@ def decompress_pickle(filename):
     return data
 
 
-def load_data_one_patient(base_dir = '.', n_processes = 8, verbose = 0):
+def load_data_one_patient(base_dir = '.', n_processes = 8, verbose = 0, exclude_seizures=False):
     '''
     Load data from one directory asuming all files belong to the same patient.
 
@@ -43,9 +43,9 @@ def load_data_one_patient(base_dir = '.', n_processes = 8, verbose = 0):
         if filename.endswith(".pkl.pbz2"):
             filenames.append(base_dir + '/' + filename)
 
-    return load_files(filenames, n_processes = n_processes, verbose = verbose)
+    return load_files(filenames, n_processes = n_processes, verbose = verbose, exclude_seizures=exclude_seizures)
 
-def load_files(filename_list, n_processes = 8, verbose = 0):
+def load_files(filename_list, n_processes = 8, verbose = 0, exclude_seizures=False):
     '''
     Loads all the files provided in the parameter **filename_list**
 
@@ -63,7 +63,7 @@ def load_files(filename_list, n_processes = 8, verbose = 0):
 
     with Pool(processes = n_processes) as pool:
         
-        pool_output = pool.map(load_file, filename_list)
+        pool_output = pool.starmap(load_file, zip(filename_list,[exclude_seizures] * len(filename_list)))
 
     data_pieces = list()
     for l in pool_output:
@@ -74,7 +74,7 @@ def load_files(filename_list, n_processes = 8, verbose = 0):
 
 
 
-def load_file(filename):
+def load_file(filename, exclude_seizures=False):
     '''
     Loads the contents of one file.
 
@@ -109,12 +109,14 @@ def load_file(filename):
         _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
         _label = label
         label = (label + 1) % 2
-        data_pieces.append((_signal, _label))
+        if label == 0 or not exclude_seizures:
+            data_pieces.append((_signal, _label))
         i0 = boundaries[1] + 1
     i1 = len(signal_dict[signal_ids[0]])
     _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
     _label = label
-    data_pieces.append((_signal, _label))
+    if label == 0 or not exclude_seizures:
+        data_pieces.append((_signal, _label))
     #
     return data_pieces
 
@@ -127,7 +129,9 @@ class DataGenerator:
     def __init__(self, base_dirs = ['.'], batch_size = 20, window_length = 256, shift = 128,
                  do_shuffle = False,
                  do_standard_scaling = True,
-                 n_processes = 4):
+                 n_processes = 4,
+                 exclude_seizures = False,
+                 in_training_mode = False):
         '''
 
             Constructor to create objects of the class **DataGenerator** and loads all the data.
@@ -154,6 +158,11 @@ class DataGenerator:
             :param boolean do_standard_scaling: Flag to indicate whether to scale each channel to zero mean and unit variance.
 
             :param int n_processes: Number of threads to use for loading data from files.
+
+            :param boolean exclude_seizures: Flag to indicate whether to exclude the records with seizures.
+
+            :param boolean in_training_mode: Flag to indicate whether the process is in training mode.
+
         '''
         #
         self.batch_size = batch_size
@@ -161,6 +170,8 @@ class DataGenerator:
         self.shift = shift
         self.do_shuffle = do_shuffle
         self.do_standard_scaling = do_standard_scaling
+        self.exclude_seizures = exclude_seizures
+        self.in_training_mode = in_training_mode
         #
         self.num_batches = 0
         self.num_samples = 0
@@ -170,7 +181,7 @@ class DataGenerator:
         self.data_pieces = list()
         _input_shape = None
         for base_dir in base_dirs:
-            d_p = load_data_one_patient(base_dir, n_processes = n_processes, verbose = 1)
+            d_p = load_data_one_patient(base_dir, n_processes = n_processes, verbose = 1, exclude_seizures = self.exclude_seizures)
             for p, label in d_p:
                 if _input_shape is None:
                     _input_shape = p.shape[1:]
@@ -187,18 +198,25 @@ class DataGenerator:
         self.std  = numpy.ones(self.input_shape[-1])
         #
         if self.do_standard_scaling:
-            means = []
-            counts = []
-            stddevs = []
-            for p, label in self.data_pieces:
-                means.append(p.mean(axis = 0))
-                counts.append(len(p))
-                stddevs.append(p.std(axis = 0))
-            self.mean = sum([m * c for m, c in zip(means, counts)])
-            self.std  = sum([s * c for s, c in zip(stddevs, counts)])
-            self.mean /= sum(counts)
-            self.std  /= sum(counts)
-            #
+            if self.in_training_mode:
+                means = []
+                counts = []
+                stddevs = []
+                for p, label in self.data_pieces:
+                    means.append(p.mean(axis = 0))
+                    counts.append(len(p))
+                    stddevs.append(p.std(axis = 0))
+                self.mean = sum([m * c for m, c in zip(means, counts)])
+                self.std  = sum([s * c for s, c in zip(stddevs, counts)])
+                self.mean /= sum(counts)
+                self.std  /= sum(counts)
+                #
+                array = numpy.array([self.mean, self.std])
+                numpy.save('models/statistics.npy', array)
+            else:
+                array = numpy.load('models/statistics.npy')
+                self.mean = array[0]
+                self.std = array[1]
         #
         self.on_epoch_end()
 
