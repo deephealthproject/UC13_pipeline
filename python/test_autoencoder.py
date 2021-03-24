@@ -55,8 +55,6 @@ if __name__ == '__main__':
         for i in indices:
             original = x.select([str(i),":",":",":"])
             pred = prediction[0].select([str(i),":",":",":"])
-            original.reshape_([-1])
-            pred.reshape_([-1])
             dist = original.sub(pred).sqr()
             dist = math.sqrt(numpy.sum(dist.getdata()))
             if y[i]==0:
