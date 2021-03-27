@@ -13,21 +13,33 @@ if __name__ == '__main__':
 
     starting_epoch = 0
     epochs = 10
+    batch_size = 70
     model_filename = None
     model_id = '2'
+    dirnames = list()
     for i in range(1, len(sys.argv)):
         param = sys.argv[i]
         if param == '--model-filename':
             model_filename = sys.argv[i+1]
         elif param == '--model':
-            model_id = int(sys.argv[i+1])
+            #model_id = int(sys.argv[i+1])
+            model_id = sys.argv[i+1]
         elif param == '--starting-epoch':
             starting_epoch = int(sys.argv[i+1])
         elif param == '--epochs':
             epochs = int(sys.argv[i+1])
+        elif param == '--batch-size':
+            batch_size = int(sys.argv[i+1])
+        elif param == '--dirname':
+            dirnames.append(sys.argv[i+1])
 
-    dg = DataGenerator(['../UC13/clean_signals/chb01/train'], batch_size = 100, do_shuffle = True, 
-                        n_processes = 16, exclude_seizures = True,
+    if len(dirnames) == 0:
+        dirnames = ['../UC13/clean_signals/chb01/train']
+
+    dg = DataGenerator(dirnames, batch_size = batch_size, do_shuffle = True, 
+                        n_processes = 16,
+                        exclude_seizures = True,
+                        do_preemphasis = True,
                         in_training_mode = True)
 
     x, y = dg[0]

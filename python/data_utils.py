@@ -10,13 +10,14 @@ from random import shuffle
 from multiprocessing import Pool, TimeoutError
 
 
-__verbose = 0
-
 def decompress_pickle(filename):
     '''
     Load any compressed pickle file
 
-    :filename: Name of the file from which to load data.
+    :param str filename:
+        Name of the file from which to load data.
+
+    :return: The contents of the file.
     '''
     f = bz2.BZ2File(filename, 'rb')
     data = cPickle.load(f)
@@ -24,16 +25,34 @@ def decompress_pickle(filename):
     return data
 
 
-def load_data_one_patient(base_dir = '.', n_processes = 8, verbose = 0, exclude_seizures=False):
+def load_data_one_patient(base_dir = '.',
+                            n_processes = 8,
+                            verbose = 0,
+                            exclude_seizures = False,
+                            do_preemphasis = False):
     '''
     Load data from one directory asuming all files belong to the same patient.
 
-    :base_dir: Path to the directory where the files with extension ".pkl.pbz2" are located.
+    :param str base_dir:
+        Path to the directory where the files with extension ".pkl.pbz2" are located.
 
-    :n_processes: Number of jobs/threads to launch in parallel to load data from files.
-                  Each thread will load one file at a time.
+    :param int n_processes:
+        Number of jobs/threads to launch in parallel to load data from files.
+        Each thread will load one file at a time.
 
-    :verbose: Verbose level.
+    :param boolean exclude_seizures:
+        To indicate if subsequences corresponding to seizures must be skipped.
+
+    :param boolean do_preemphasis:
+        To indicate if FIR preemphasis filter must be applied.
+
+    :param int verbose:
+        Level of verbosity.
+
+    :return: A list with the sequences of vectors with channels
+             from all the files in the directories provided.
+             Each element in the list correspond to a change
+             in the label, no seizures imply a single sequence.
     '''
 
     data_pieces = list()
@@ -43,27 +62,46 @@ def load_data_one_patient(base_dir = '.', n_processes = 8, verbose = 0, exclude_
         if filename.endswith(".pkl.pbz2"):
             filenames.append(base_dir + '/' + filename)
 
-    return load_files(filenames, n_processes = n_processes, verbose = verbose, exclude_seizures=exclude_seizures)
+    return load_files(filenames,
+                        n_processes = n_processes,
+                        verbose = verbose,
+                        exclude_seizures = exclude_seizures,
+                        do_preemphasis = do_preemphasis)
 
-def load_files(filename_list, n_processes = 8, verbose = 0, exclude_seizures=False):
+def load_files(filename_list,
+                n_processes = 8,
+                verbose = 0,
+                exclude_seizures = False,
+                do_preemphasis = False):
     '''
     Loads all the files provided in the parameter **filename_list**
 
-    :filename_list: List with the names of files from which to load data.
+    :param list filename_list: List with the names of files from which to load data.
 
-    :n_processes: Number of jobs/threads to launch in parallel to load data from files.
-                  Each thread will load one file at a time.
+    :param int n_processes:
+        Number of jobs/threads to launch in parallel to load data from files.
+        Each thread will load one file at a time.
 
-    :verbose: Verbose level.
+    :param boolean exclude_seizures:
+        To indicate if subsequences corresponding to seizures must be skipped.
+
+    :param boolean do_preemphasis:
+        To indicate if FIR preemphasis filter must be applied.
+
+    :param int verbose:
+        Level of verbosity.
+
+    :return: A list with the sequences of vectors with channels.
+             Each element in the list correspond to a change in
+             the label, no seizures imply a single sequence.
     '''
-
-    global __verbose
-
-    __verbose = verbose
 
     with Pool(processes = n_processes) as pool:
         
-        pool_output = pool.starmap(load_file, zip(filename_list,[exclude_seizures] * len(filename_list)))
+        pool_output = pool.starmap(load_file, zip(filename_list,
+                                                    [exclude_seizures] * len(filename_list),
+                                                    [do_preemphasis] * len(filename_list),
+                                                    [verbose] * len(filename_list)))
 
     data_pieces = list()
     for l in pool_output:
@@ -74,18 +112,42 @@ def load_files(filename_list, n_processes = 8, verbose = 0, exclude_seizures=Fal
 
 
 
-def load_file(filename, exclude_seizures=False):
+def load_file(filename, exclude_seizures = False,
+                        do_preemphasis = False,
+                        separate_seizures = True,
+                        verbose = 0):
     '''
     Loads the contents of one file.
 
-    :filename: Name of the file from which to load data.
+    :param str filename:
+        Name of the file from which to load data.
+
+    :param boolean exclude_seizures:
+        To indicate whether subsequences corresponding to seizures must be skipped.
+
+    :param boolean do_preemphasis:
+        To indicate whether FIR preemphasis filter must be applied.
+
+    :param boolean separate_seizures:
+        To indicate whether split the signal into pieces to isolate
+        subsequences corresponding to seizures.
+
+    :param int verbose:
+        Level of verbosity.
+
+    :return: A list with the sequences of vectors with channels.
+             Each element in the list correspond to a change in
+             the label, no seizures imply a single sequence.
     '''
     #
-    if __verbose > 0 : print('loading', filename)
+    if verbose > 0:
+        print('loading', filename,
+                'excluding seizures:',exclude_seizures,
+                'applying a preemphasis filter:', do_preemphasis)
     #
     signal_dict = decompress_pickle(filename)
     metadata = signal_dict.get('metadata')
-    if __verbose > 1:
+    if verbose > 1:
         print(signal_dict.keys())
         print(metadata.keys())
 
@@ -96,27 +158,45 @@ def load_file(filename, exclude_seizures=False):
     if len(episodes) > 0:
         episodes.sort(key = lambda a: a[0], reverse = True)
 
-    if __verbose > 1:
+    if verbose > 1:
         print(signal_ids)
         print(num_seizures)
         print(episodes)
 
+    if do_preemphasis:
+        alpha = 0.98
+        for key in signal_ids:
+            x = signal_dict[key].copy()
+            '''
+            previous_value = x[0]
+            for i in range(1, len(x)):
+                temp = x[i]
+                x[i] = x[i] - alpha * previous_value
+                previous_value = temp
+            '''
+            signal_dict[key][1:] = x[1:] - alpha * x[:-1]
+            signal_dict[key][0] = 0
+
     data_pieces = list()
-    label = 0 # no seizure, set to 1 for seizures
-    i0 = 0
-    for boundaries in episodes:
-        i1 = boundaries[0]
+    if separate_seizures:
+        label = 0 # no seizure, set to 1 for seizures
+        i0 = 0
+        for boundaries in episodes:
+            i1 = boundaries[0]
+            _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
+            _label = label
+            label = (label + 1) % 2
+            if label == 0 or not exclude_seizures:
+                data_pieces.append((_signal, _label))
+            i0 = boundaries[1] + 1
+        i1 = len(signal_dict[signal_ids[0]])
         _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
         _label = label
-        label = (label + 1) % 2
         if label == 0 or not exclude_seizures:
             data_pieces.append((_signal, _label))
-        i0 = boundaries[1] + 1
-    i1 = len(signal_dict[signal_ids[0]])
-    _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
-    _label = label
-    if label == 0 or not exclude_seizures:
-        data_pieces.append((_signal, _label))
+    else:
+        _signal = numpy.array([signal_dict[signal_id][:] for signal_id in signal_ids]).T
+        data_pieces.append((_signal, 0))
     #
     return data_pieces
 
@@ -129,6 +209,7 @@ class DataGenerator:
     def __init__(self, base_dirs = ['.'], batch_size = 20, window_length = 256, shift = 128,
                  do_shuffle = False,
                  do_standard_scaling = True,
+                 do_preemphasis = False,
                  n_processes = 4,
                  exclude_seizures = False,
                  in_training_mode = False):
@@ -141,27 +222,42 @@ class DataGenerator:
             Parameters
             ----------
 
-            :param self: Reference to the current object.
+            :param self:
+                Reference to the current object.
 
-            :param list base_dirs: List of directories from which to load data files.
+            :param list base_dirs:
+                List of directories from which to load data files.
 
-            :param int batch_size : Number of samples per batch.
+            :param int batch_size:
+                Number of samples per batch.
 
-            :param int window_length: Size in vectors of channels in the
-                                      signal to compose a single sample.
+            :param int window_length:
+                Size in vectors of channels in the signal to compose a
+                single sample.
 
-            :param int shift: Number of vectors of channels from the signal to shift from
-                              one sample to the next one in the sequence. 
+            :param int shift:
+                Number of vectors of channels from the signal to shift from
+                one sample to the next one in the sequence. 
 
-            :param boolean do_shuffle: Flag to indicate whether to shuffle data between epochs.
+            :param boolean do_shuffle:
+                Flag to indicate whether to shuffle data between epochs.
 
-            :param boolean do_standard_scaling: Flag to indicate whether to scale each channel to zero mean and unit variance.
+            :param boolean do_standard_scaling:
+                Flag to indicate whether to scale each channel to zero
+                mean and unit variance.
 
-            :param int n_processes: Number of threads to use for loading data from files.
+            :param boolean do_preemphasis:
+                Flag to indicate whether to apply a preemphasis FIR filter
+                to each signal/channel.
 
-            :param boolean exclude_seizures: Flag to indicate whether to exclude the records with seizures.
+            :param int n_processes:
+                Number of threads to use for loading data from files.
 
-            :param boolean in_training_mode: Flag to indicate whether the process is in training mode.
+            :param boolean exclude_seizures:
+                Flag to indicate whether to exclude the records with seizures.
+
+            :param boolean in_training_mode:
+                Flag to indicate whether the process is in training mode.
 
         '''
         #
@@ -170,6 +266,7 @@ class DataGenerator:
         self.shift = shift
         self.do_shuffle = do_shuffle
         self.do_standard_scaling = do_standard_scaling
+        self.do_preemphasis = do_preemphasis
         self.exclude_seizures = exclude_seizures
         self.in_training_mode = in_training_mode
         #
@@ -181,7 +278,11 @@ class DataGenerator:
         self.data_pieces = list()
         _input_shape = None
         for base_dir in base_dirs:
-            d_p = load_data_one_patient(base_dir, n_processes = n_processes, verbose = 1, exclude_seizures = self.exclude_seizures)
+            d_p = load_data_one_patient(base_dir,
+                                        n_processes = n_processes,
+                                        verbose = 1,
+                                        exclude_seizures = self.exclude_seizures,
+                                        do_preemphasis = do_preemphasis)
             for p, label in d_p:
                 if _input_shape is None:
                     _input_shape = p.shape[1:]
@@ -286,7 +387,7 @@ class DataGenerator:
 
 if __name__ == '__main__':
     
-    dg = DataGenerator(['clean_signals/chb01'], do_shuffle = True, n_processes = 16)
+    dg = DataGenerator(['../clean_signals/chb01'], do_shuffle = True, n_processes = 16, do_preemphasis = True)
 
     print("loaded %d signal vectors" % dg.num_signal_vectors)
     print("loaded %d data samples" % dg.num_samples)
