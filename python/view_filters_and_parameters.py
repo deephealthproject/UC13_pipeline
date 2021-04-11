@@ -15,6 +15,18 @@ plt.plot(prep30ms.hamming_window)
 plt.show()
 
 
-fb.FilterBank(sample_rate = 256, num_channels_fft = 128, fb_length = 40, mel_scale = False).view_filters()
+#   sampling_rate * window_length (in ms) / 1000 (because ms)
+x = 256 * 10000 / 1000
+num_channels_fft = 1
+while num_channels_fft < x:
+    num_channels_fft *= 2
 
-cc.CepstralCoefficients(40, 13).view_dct()
+print(x, num_channels_fft)
+
+fb.FilterBank(sample_rate = 256,
+            num_channels_fft = int(num_channels_fft // 2),
+            fb_length = 20,
+            use_mel_scale = False,
+            max_freq_for_filters = 50).view_filters()
+
+cc.CepstralCoefficients(20, 13).view_dct()

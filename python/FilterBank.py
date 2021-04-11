@@ -8,11 +8,16 @@ class FilterBank:
     to work with other signals.
     """
 
-    def __init__(self, sample_rate = 16000.0, num_channels_fft = 256, fb_length = None, mel_scale = True):
+    def __init__(self, sample_rate = 16000.0,
+                 num_channels_fft = 256,
+                 fb_length = None,
+                 use_mel_scale = True,
+                 max_freq_for_filters = None):
         self.sample_rate = sample_rate
         self.num_channels_fft = num_channels_fft # Number of channels in the output of the FFT
         self.fb_length = fb_length
-        self.mel_scale = mel_scale
+        self.use_mel_scale = use_mel_scale
+        self.max_freq_for_filters = max_freq_for_filters
 
         if self.fb_length is None:
             # if not specified, then decide according to sampling rate
@@ -29,10 +34,13 @@ class FilterBank:
             else:
                 sys.exit(1)
 
+        if self.max_freq_for_filters is None:
+            self.max_freq_for_filters = sample_rate // 2
+
         self.coeffs = np.zeros([self.fb_length, self.num_channels_fft])
         self.freqs = np.zeros(self.num_channels_fft)
 
-        if self.mel_scale:
+        if self.use_mel_scale:
             delta = sample_rate / (2.0 * self.num_channels_fft)
             self.freqs[0] = delta;
             for i in range(1, self.num_channels_fft):
@@ -64,7 +72,7 @@ class FilterBank:
                     sum_coeffs += coeff
                     max_coeffs = max(max_coeffs, coeff)
 
-                """"
+                """
                     Should be normalized, but you can comment next loop if you
                     want to plot the coefficients
                 """
@@ -83,13 +91,11 @@ class FilterBank:
             for i in range(1, self.num_channels_fft):
                 self.freqs[i] = self.freqs[i - 1] + delta
 
-            delta = self.num_channels_fft / self.fb_length
+            delta = self.max_freq_for_filters / self.fb_length
             current_freq = 0
-            next_freq = delta
             for i in range(self.fb_length):
-                previous_freq = current_freq
-                current_freq  = current_freq + delta
-                next_freq     = next_freq + delta
+                previous_freq = current_freq - delta
+                next_freq     = current_freq + delta
 
                 sum_coeffs = 0.0
                 max_coeffs = 0.0
@@ -105,6 +111,11 @@ class FilterBank:
                     sum_coeffs += coeff
                     max_coeffs = max(max_coeffs, coeff)
 
+                for k in range(len(self.freqs)):
+                    self.coeffs[i, k] /= (1.0e-6 + sum_coeffs)
+
+                current_freq += delta
+            # end for
 
         # Attributes for implementing the Choi spectral flooring
         self.alpha = np.zeros(self.fb_length)
@@ -179,7 +190,7 @@ class FilterBank:
 
 
     """ Call this function as fb.view_filters() where fb is an object of this class. """
-    def view_filters( self ):
+    def view_filters(self):
 
         import matplotlib.pyplot as plt
 

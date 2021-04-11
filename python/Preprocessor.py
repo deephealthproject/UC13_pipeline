@@ -11,7 +11,12 @@ class Preprocessor:
         parametrization of the speech signal
     """
 
-    def __init__(self, sampling_rate, subsampling_period, window_length, fb_length = None):
+    def __init__(self,  sampling_rate,
+                        subsampling_period,
+                        window_length,
+                        fb_length = None,
+                        max_freq_for_filters = None,
+                        use_mel_scale = True):
         ####################################
         self.sampling_rate = sampling_rate # In Hertz
         self.subsampling_period = subsampling_period # In milliseconds
@@ -21,14 +26,18 @@ class Preprocessor:
         self.dc_removal_x_ant = 0.0
         self.dc_removal_y_ant = 0.0
         ####################################
-        self.preemphasis_alfa = 0.95
+        self.preemphasis_alpha = 0.95
         self.preemphasis_x_ant = 0.0
         ####################################
         self.hamming_window = signal.hamming((self.sampling_rate * self.window_length) // 1000, True)
         self.len_fft_window = 2
         while self.len_fft_window < len(self.hamming_window):
             self.len_fft_window *= 2
-        self.filter_bank = FilterBank(self.sampling_rate, self.len_fft_window // 2, fb_length = fb_length)
+        self.filter_bank = FilterBank(self.sampling_rate,
+                                        self.len_fft_window // 2,
+                                        fb_length = fb_length,
+                                        use_mel_scale = use_mel_scale,
+                                        max_freq_for_filters = max_freq_for_filters)
         ####################################
         self.cepstral = CepstralCoefficients(self.filter_bank.get_num_filters(), 13)
         ####################################
@@ -51,7 +60,7 @@ class Preprocessor:
 
         for t in range(len(input_signal)):
             temp = input_signal[t] # 'temp' is used to prevent error in the case 'input_signal' and 'output_signal' are the same array
-            output_signal[t] = input_signal[t] - self.preemphasis_alfa * self.preemphasis_x_ant
+            output_signal[t] = input_signal[t] - self.preemphasis_alpha * self.preemphasis_x_ant
             self.preemphasis_x_ant = temp
         ### END OF preemphasis() ###
 
@@ -74,7 +83,7 @@ class Preprocessor:
         choi = np.zeros(self.filter_bank.get_num_filters())
         self.filter_bank.compute_filter_bank(psd, non_filtered, choi, (normE <= -1.0) or initial_frames)
         ### Applying logarithm to the PSD after being used for computing the filterbank
-        for c in range( len(psd)):
+        for c in range(len(psd)):
             psd[c] = 10 * np.log10(1. + psd[c])
         ### Compute the cepstral coefficients
         #cc = self.cepstral.compute( non_filtered ) # Decide which to use, this or the filtered
