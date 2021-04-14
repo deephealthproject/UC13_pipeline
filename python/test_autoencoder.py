@@ -28,11 +28,11 @@ if __name__ == '__main__':
         elif param == '--epochs':
             epochs = int(sys.argv[i+1])
 
-    dg = DataGenerator(['../UC13/clean_signals/chb01/test'], batch_size = 70, do_shuffle = True, n_processes = 16)
+    dg = DataGenerator(['../UC13/clean_signals/chb03/test'], batch_size = 70, do_shuffle = True, n_processes = 16)
 
     x, y = dg[0]
     input_shape = (1,) +  x.shape[1:]
-    if model_id == '1a':
+    if model_id == '1a':s
         net = model_1a(input_shape, input_shape, filename = model_filename)
     elif model_id == '1b':
         net = model_1a(input_shape, input_shape, filename = model_filename)
@@ -55,8 +55,14 @@ if __name__ == '__main__':
         for i in indices:
             original = x.select([str(i),":",":",":"])
             pred = prediction[0].select([str(i),":",":",":"])
-            dist = original.sub(pred).sqr()
-            dist = math.sqrt(numpy.sum(dist.getdata()))
+            #dist = original.sub(pred).sqr()
+            #dist = math.sqrt(numpy.sum(dist.getdata()))
+
+            original = original.getdata()
+            pred = pred.getdata()
+            dist = numpy.subtract(original,pred)
+            dist = math.sqrt(numpy.sum(numpy.square(dist)))
+
             if y[i]==0:
                 distances_class_zero.append(dist)
             if y[i]==1:
