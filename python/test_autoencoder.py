@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     x, y = dg[0]
     input_shape = (1,) +  x.shape[1:]
-    if model_id == '1a':s
+    if model_id == '1a':
         net = model_1a(input_shape, input_shape, filename = model_filename)
     elif model_id == '1b':
         net = model_1a(input_shape, input_shape, filename = model_filename)
