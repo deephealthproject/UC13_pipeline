@@ -24,6 +24,16 @@ def decompress_pickle(filename):
     f.close()
     return data
 
+def compress_to_pickle(filename, obj):
+    '''
+    Save a Python object into a compressed pickle file
+    '''
+    if not filename.endswith('.pbz2'):
+        filename += '.pbz2'
+    with bz2.BZ2File(filename, 'w') as f:
+        cPickle.dump(obj, f)
+
+
 
 def load_data_one_patient(base_dir = '.',
                             n_processes = 8,
@@ -97,7 +107,7 @@ def load_files(filename_list,
     '''
 
     with Pool(processes = n_processes) as pool:
-        
+
         pool_output = pool.starmap(load_file, zip(filename_list,
                                                     [exclude_seizures] * len(filename_list),
                                                     [do_preemphasis] * len(filename_list),
@@ -237,7 +247,7 @@ class DataGenerator:
 
             :param int shift:
                 Number of vectors of channels from the signal to shift from
-                one sample to the next one in the sequence. 
+                one sample to the next one in the sequence.
 
             :param boolean do_shuffle:
                 Flag to indicate whether to shuffle data between epochs.
@@ -361,7 +371,7 @@ class DataGenerator:
         #
         for sample in range(self.batch_size):
             (data, label), index = self.indices[batch_index * self.batch_size + sample]
-            
+
             X.append(data[index : index + self.window_length])
             Y.append(label)
         #
@@ -382,11 +392,11 @@ class DataGenerator:
             print("#  ", file = sys.stderr)
         #
         return (X, Y)
-        
+
 
 
 if __name__ == '__main__':
-    
+
     dg = DataGenerator(['../clean_signals/chb01'], do_shuffle = True, n_processes = 16, do_preemphasis = True)
 
     print("loaded %d signal vectors" % dg.num_signal_vectors)
