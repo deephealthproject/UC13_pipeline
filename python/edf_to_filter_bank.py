@@ -4,7 +4,6 @@ import numpy
 import Preprocessor as preprocessor
 
 from data_utils import load_file, compress_to_pickle
-from empirical_decomposition import decomposition
 
 class MySignal:
     def __init__(self, x):
