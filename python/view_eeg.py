@@ -12,8 +12,8 @@ from empirical_decomposition import decomposition
 
 
 
-filename = '../clean_signals/chb01/chb01_03.edf.pkl.pbz2'
-#filename = '../clean_signals/chb02/chb02_19.edf.pkl.pbz2'
+#filename = '../clean_signals/chb01/chb01_03.edf.pkl.pbz2'
+filename = '../clean_signals/chb01/chb01_19.edf.pkl.pbz2'
 
 data_pieces = load_file(filename,
                         exclude_seizures = False,
