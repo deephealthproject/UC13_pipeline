@@ -45,7 +45,7 @@ for line in file:
     fbank = list()
     for ch in range(n_channels):
         obj = MySignal(signals[:, ch])
-        preprocessors[ch].preemphasis_alfa = 0.0
+        preprocessors[ch].preemphasis_alpha = 0.0
         preemphasis, spectrogram, fb, fb_choi, mfcc = preprocessors[ch].preprocess_an_utterance(obj, verbose = 0)
 
         fbank.append(fb)
