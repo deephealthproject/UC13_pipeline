@@ -20,7 +20,7 @@ def model_1(input_shape, output_shape, filename = None):
         layer = eddl.ReLu(eddl.Conv2D(layer, 96, kernel_size = [3, 3], padding = 'same'))
         layer = eddl.Reshape(layer, [-1])
         layer = eddl.Activation(eddl.Dense(layer, 64), 'relu')
-        layer = eddl.Softmax(eddl.Dense(layer, 1))
+        layer = eddl.Softmax(eddl.Dense(layer, 2))
 
         out_ = layer
 
@@ -33,8 +33,8 @@ def model_1(input_shape, output_shape, filename = None):
     eddl.build(
             net,
             o = eddl.sgd(lr = 1.e-6, momentum = 0.9), # previously lr was 1.0e-5
-            lo = ["binary_cross_entropy"],
-            me = ["binary_accuracy"],
+            lo = ["categorical_cross_entropy"],
+            me = ["categorical_accuracy"],
             cs = eddl.CS_GPU(g = [1], mem = 'full_mem'),
             init_weights = initialize
             )

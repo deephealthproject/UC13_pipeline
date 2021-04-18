@@ -94,18 +94,14 @@ def model_2(input_shape, output_shape, filename = None):
         layer = eddl.ReLu(eddl.Conv2D(layer, 32, kernel_size = [3, 1], padding = 'same'))
         layer = eddl.ReLu(eddl.Conv2D(layer, 32, kernel_size = [3, 1], padding = 'same'))
         layer = eddl.MaxPool2D(layer, pool_size = [2, 1], strides = [2, 1])
-        
         layer = eddl.ReLu(eddl.Conv2D(layer, 64, kernel_size = [3, 1], padding = 'same'))
         layer = eddl.ReLu(eddl.Conv2D(layer, 64, kernel_size = [3, 1], padding = 'same'))
         layer = eddl.MaxPool2D(layer, pool_size = [2, 1], strides = [2, 1])
-        
         layer = eddl.ReLu(eddl.Conv2D(layer, 96, kernel_size = [3, 1], padding = 'same'))
         layer = eddl.ReLu(eddl.Conv2D(layer, 96, kernel_size = [3, 1], padding = 'same'))
-
         layer = eddl.UpSampling(layer, size = [2, 1])
         layer = eddl.ReLu(eddl.Conv2D(layer, 64, kernel_size = [3, 1], padding = 'same'))
         layer = eddl.ReLu(eddl.Conv2D(layer, 64, kernel_size = [3, 1], padding = 'same'))
-
         layer = eddl.UpSampling(layer, size = [2, 1])
         layer = eddl.ReLu(eddl.Conv2D(layer, 32, kernel_size = [3, 1], padding = 'same'))
         layer = eddl.ReLu(eddl.Conv2D(layer, 32, kernel_size = [3, 1], padding = 'same'))

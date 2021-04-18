@@ -6,6 +6,8 @@ from pyeddl import eddl
 from pyeddl.tensor import Tensor
 
 from data_utils import DataGenerator
+from data_utils import decompress_pickle
+from data_utils import load_data
 from classifiers import model_1
 
 
@@ -26,11 +28,10 @@ if __name__ == '__main__':
         elif param == '--epochs':
             epochs = int(sys.argv[i+1])
 
-    dg = DataGenerator(['../UC13/clean_signals/chb03/train'], batch_size = 100, do_shuffle = True, 
-                        n_processes = 16, exclude_seizures = True,
-                        in_training_mode = True)
 
-    x, y = dg[0]
+    batch_size = 128
+    x, y = load_data(['../../UC13/clean_signals/chb01/train'], exclude_seizures = False)
+
     input_shape = (1,) +  x.shape[1:]
     if model_id == '1':
         net = model_1(input_shape, input_shape, filename = model_filename)
@@ -39,23 +40,16 @@ if __name__ == '__main__':
 
     log_file = open(f'log/model_{model_id}_classifier.log', 'a')
 
-    for epoch in range(starting_epoch, epochs):
-        print()
-        print('epoch:', epoch, 'num batches:', len(dg))
-        eddl.reset_loss(net)
-        j = 0
-        
-        for x, y in dg:
-            x = numpy.expand_dims(x, axis = 1)
-            indices = list(range(len(x)))
-            x = Tensor.fromarray(x)
-            eddl.train_batch(net, [x], [x], indices = indices)
-            eddl.print_loss(net, j)
-            print('\r', end = '')
-            j += 1
+    x_train = numpy.expand_dims(x, axis = 1)
+    x_train = Tensor.fromarray(x_train)
+    y_train = Tensor.fromarray(y)
 
-        log_file.write("epoch %d   bce %g  acc %g\n" % (epoch+1, eddl.get_losses(net)[0], eddl.get_metrics(net)[0]))
-        log_file.flush()
-        eddl.save_net_to_onnx_file(net, f'models/classifiers/model_{model_id}-{epoch}.onnx')
-        dg.on_epoch_end()
-    log_file.close()
+    eddl.fit(net, [x_train], [y_train], batch_size, epochs)
+
+    print("Evaluating the model...")
+    x_test, y_test = load_data(['../../UC13/clean_signals/chb01/test'], exclude_seizures = False)
+    x_test = numpy.expand_dims(x_test, axis = 1)
+    x_test = Tensor.fromarray(x_test)
+    y_test = Tensor.fromarray(y_test)
+    
+    eddl.evaluate(net, [x_test], [y_test])
