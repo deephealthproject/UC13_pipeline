@@ -44,12 +44,14 @@ for line in sys.stdin:
 
                 s = current_filename.replace('.edf', '.labels.npy')
                 npy_filename = dir_name + '/' + s
-                print(npy_filename)
                 numpy.save(npy_filename, labels_current_file)
+                s = current_filename.replace('.edf', '.timestamp.npy')
+                npy_filename = dir_name + '/' + s
+                numpy.save(npy_filename, timestamps_current_file)
 
             current_filename = elements[2]
             current_starting_time = None
-            current_ending_time = None
+            #current_ending_time = None
             labels_current_file = None
             lapse_current_file = None
             num_seizures = 0
@@ -59,6 +61,10 @@ for line in sys.stdin:
             current_starting_time = datetime.datetime.strptime(elements[3], '%H:%M:%S') + current_time_offset
 
             if current_ending_time is not None:
+                if current_starting_time < current_ending_time: # this ending time is the one of the previous file
+                    current_time_offset += datetime.timedelta(hours = 24)
+                    current_starting_time += datetime.timedelta(hours = 24)
+
                 delta = current_starting_time - current_ending_time
                 print('               delta:', delta)
 
@@ -84,6 +90,7 @@ for line in sys.stdin:
                 raise Exception(f'{current_ending_time} is previous to {current_starting_time}')
             lapse_current_file = current_ending_time - current_starting_time
             labels_current_file = numpy.zeros((lapse_current_file - subsampling_period * 2) // subsampling_period, dtype = int)
+            timestamps_current_file = [current_starting_time + (i + 1) * subsampling_period for i in range(len(labels_current_file))]
 
         elif l.startswith('Number of Seizures in File:'):
 
@@ -111,5 +118,7 @@ for line in sys.stdin:
         print()
         s = current_filename.replace('.edf', '.labels.npy')
         npy_filename = dir_name + '/' + s
-        print(npy_filename)
         numpy.save(npy_filename, labels_current_file)
+        s = current_filename.replace('.edf', '.timestamp.npy')
+        npy_filename = dir_name + '/' + s
+        numpy.save(npy_filename, timestamps_current_file)
