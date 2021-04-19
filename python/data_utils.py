@@ -162,10 +162,16 @@ def load_file(filename, exclude_seizures = False,
         print(metadata.keys())
 
     signal_ids = metadata['channels']
-    num_seizures = metadata['seizures']
-    episodes = metadata['times']
+    try:
+        num_seizures = metadata['seizures']
+    except:
+        num_seizures = 0
+    try:
+        episodes = metadata['times']
+    except:
+        episodes = None
 
-    if len(episodes) > 0:
+    if episodes is not None and len(episodes) > 0:
         episodes.sort(key = lambda a: a[0], reverse = True)
 
     if verbose > 1:
@@ -188,7 +194,7 @@ def load_file(filename, exclude_seizures = False,
             signal_dict[key][0] = 0
 
     data_pieces = list()
-    if separate_seizures:
+    if separate_seizures and episodes is not None:
         label = 0 # no seizure, set to 1 for seizures
         i0 = 0
         for boundaries in episodes:
