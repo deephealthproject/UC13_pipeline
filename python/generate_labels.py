@@ -14,6 +14,9 @@ Seizure Start Time: 2996 seconds
 Seizure End Time: 3036 seconds
 '''
 
+total_samples = 0
+total_on_seizure = 0
+
 for line in sys.stdin:
     txt_filename = line.strip()
 
@@ -41,6 +44,9 @@ for line in sys.stdin:
                 print(current_filename, current_starting_time, current_ending_time, num_seizures, end = ' | ')
                 #print("".join("{:d}".format(x) for x in labels_current_file))
                 print()
+
+                total_on_seizure += sum(labels_current_file)
+                total_samples += len(labels_current_file)
 
                 s = current_filename.replace('.edf', '.labels.npy')
                 npy_filename = dir_name + '/' + s
@@ -96,19 +102,33 @@ for line in sys.stdin:
 
             num_seizures = int(elements[5])
 
-        elif l.startswith('Seizure Start Time:'):
+        elif l.startswith('Seizure'):
+            if elements[1] == 'Start' and elements[2] == 'Time:':
 
-            s = int(elements[3])
-            t = 1 + s // int(subsampling_period.total_seconds())
-            if labels_current_file is None:
-                print(current_filename)
-            labels_current_file[t:] = 1
+                s = int(elements[3])
+                t = 1 + s // int(subsampling_period.total_seconds())
+                labels_current_file[t:] = 1
 
-        elif l.startswith('Seizure End Time:'):
+            elif elements[2] == 'Start' and elements[3] == 'Time:':
 
-            s = int(elements[3])
-            t = 1 + s // int(subsampling_period.total_seconds())
-            labels_current_file[t:] = 0
+                s = int(elements[4])
+                t = 1 + s // int(subsampling_period.total_seconds())
+                labels_current_file[t:] = 1
+
+            elif elements[1] == 'End' and elements[2] == 'Time:':
+
+                s = int(elements[3])
+                t = 1 + s // int(subsampling_period.total_seconds())
+                labels_current_file[t:] = 0
+
+            elif elements[2] == 'End' and elements[3] == 'Time:':
+
+                s = int(elements[4])
+                t = 1 + s // int(subsampling_period.total_seconds())
+                labels_current_file[t:] = 0
+
+            else:
+                raise Exception('unrecognized seizure line')
 
     f.close()
 
@@ -116,9 +136,19 @@ for line in sys.stdin:
         print(current_filename, current_starting_time, current_ending_time, num_seizures, end = ' | ')
         #print("".join("{:d}".format(x) for x in labels_current_file))
         print()
+
+        total_on_seizure += sum(labels_current_file)
+        total_samples += len(labels_current_file)
+
         s = current_filename.replace('.edf', '.labels.npy')
         npy_filename = dir_name + '/' + s
         numpy.save(npy_filename, labels_current_file)
         s = current_filename.replace('.edf', '.timestamp.npy')
         npy_filename = dir_name + '/' + s
         numpy.save(npy_filename, timestamps_current_file)
+
+
+print()
+print('total on seizure = %12d' % total_on_seizure)
+print('total samples    = %12d' % total_samples)
+print()
