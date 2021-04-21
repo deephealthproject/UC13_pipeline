@@ -101,9 +101,12 @@ class DataGenerator:
                 if self.input_shape is None:
                     self.input_shape = x.shape[1:]
                 elif self.input_shape != x.shape[1:]:
-                    #raise Exception('unexpected input shape: ' + str(x.shape))
-                    print('unexpected input shape: ' + str(x.shape[1:]))
-                    ignore_this_file = True
+                    if x.shape[1] == 24 and self.input_shape[0] == 23:
+                        x = x[:,0:23,:]
+                    else:
+                        #raise Exception('unexpected input shape: ' + str(x.shape))
+                        print('unexpected input shape: ' + str(x.shape[1:]))
+                        ignore_this_file = True
             else:
                 ignore_this_file = True
 

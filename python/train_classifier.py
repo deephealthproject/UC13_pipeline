@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     for epoch in range(starting_epoch, epochs):
         print()
-        print('epoch:', epoch, 'num batches:', len(dg))
+        print(f'epoch: {epoch} of {epochs}', 'num batches:', len(dg))
         eddl.reset_loss(net)
         c0 = 0
         c1 = 0
@@ -76,6 +76,7 @@ if __name__ == '__main__':
 
         log_file.write("epoch %d   softmax_cross_entropy %g   categorical_accuracy %g\n" % (epoch+1, eddl.get_losses(net)[0], eddl.get_metrics(net)[0]))
         log_file.flush()
-        eddl.save_net_to_onnx_file(net, f'models/model_classifier_{model_id}-{epoch}.onnx')
+        #eddl.save_net_to_onnx_file(net, f'models/model_classifier_{model_id}-{epoch}.onnx')
+        eddl.save(net, f'models/model_classifier_{model_id}-{epoch}.eddl')
         dg.on_epoch_end()
     log_file.close()

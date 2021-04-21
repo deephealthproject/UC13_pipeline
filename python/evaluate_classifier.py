@@ -35,7 +35,8 @@ if __name__ == '__main__':
 
     dg = DataGenerator(index_filenames, batch_size = batch_size, n_processes = 16, balance_classes = False)
 
-    input_shape = None
+    x, y, t = dg[0]
+    input_shape = x.shape[1:]
     if model_id == '1a':
         net = model_classifier_1a(input_shape, num_classes = 2, filename = model_filename)
     #elif model_id == '1b':
