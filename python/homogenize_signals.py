@@ -1,4 +1,5 @@
 import os
+import sys
 import pyedflib
 import pyedflib.highlevel as hl
 import bz2
@@ -157,7 +158,8 @@ def process_file(filename,  signal_reference, store_path):
                 if signal_names[i] in signal_reference:
                     signal_dict[signal_names[i]]=signals[i]
 
-            metadata = process_metadata(filename[:55] + "-summary.txt", filename[-12:])
+            _pos_ = filename.rindex('_')
+            metadata = process_metadata(filename[:_pos_] + "-summary.txt", os.path.basename(filename))
 
             metadata['channels']=signal_reference
 
@@ -172,6 +174,12 @@ if __name__=='__main__':
 
     signals_path = '../../UC13/physionet.org/files/chbmit/1.0.0' # Path to the data main directory
     clean_path = 'clean_signals' # Path where to store clean data
+
+    for i in range(1, len(sys.argv)):
+        if sys.argv[i] == '--signals-path':
+            signals_path = sys.argv[i+1]
+        elif sys.argv[i] == '--clean-path':
+            clean_path = sys.argv[i+1]
 
     # Reference file
     # All processed files will have same signals as the reference
