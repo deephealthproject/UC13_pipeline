@@ -133,7 +133,12 @@ def process_file(filename,  signal_reference, store_path):
     
     ignore_list = ['chb13_04.edf']
 
-    if filename[50:] in ignore_list:
+    dir_patient = os.path.dirname(filename)
+    patient_id = os.path.basename(dir_patient)
+    filename_b = os.path.basename(filename)
+    summary_filename = dir_patient + '/' + patient_id + "-summary.txt"
+
+    if filename_b in ignore_list:
         print('Ignoring file', filename)
     else:
         print('Processing file ', filename)
@@ -141,6 +146,8 @@ def process_file(filename,  signal_reference, store_path):
         signal_dict = {}
         signal_names = []
 
+        metadata = process_metadata(summary_filename, filename_b)
+        metadata['channels']=signal_reference
         signals, signal_headers, header = hl.read_edf(filename, digital=False)
 
         if len(signal_headers) < len(signal_reference):
@@ -158,14 +165,12 @@ def process_file(filename,  signal_reference, store_path):
                 if signal_names[i] in signal_reference:
                     signal_dict[signal_names[i]]=signals[i]
 
-            _pos_ = filename.rindex('_')
-            metadata = process_metadata(filename[:_pos_] + "-summary.txt", os.path.basename(filename))
-
-            metadata['channels']=signal_reference
+            #metadata = process_metadata(summary_filename, filename_b)
+            #metadata['channels']=signal_reference
 
             if len(signal_dict) != len(signal_reference): print("ERROR ON FILE ", filename)
 
-            signal_dict['metadata']=metadata
+            signal_dict['metadata'] = metadata
 
             compress_pickle(store_path, signal_dict)
 
@@ -193,6 +198,7 @@ if __name__=='__main__':
                 if f.endswith('.edf'):
                     if not os.path.exists(clean_path + '/' + d):
                         os.makedirs(clean_path + '/' + d)
-                    process_file(signals_path + '/' + d + '/' + f, signal_reference ,clean_path + '/' + d + '/' + f)
+                    #print(signals_path + '/'  + d + '/' + f)
+                    process_file(signals_path + '/' + d + '/' + f, signal_reference, clean_path + '/' + d + '/' + f)
     
     
