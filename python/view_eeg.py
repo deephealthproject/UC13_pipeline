@@ -7,9 +7,9 @@ import CepstralCoefficients as cc
 
 from matplotlib import pyplot
 
-from data_utils import load_file
-#from empirical_decomposition import decomposition
+import scipy
 
+from data_utils import load_file
 
 
 #filename = '../clean_signals/chb01/chb01_03.edf.pbz2'
@@ -33,13 +33,10 @@ preprocessors = [preprocessor.Preprocessor( sampling_rate = 256, # in Hz
                                             window_length = 4000, # in ms
                                             fb_length = 20, # number of filters
                                             use_mel_scale = False,
+                                            use_eeg_filtering = True,
                                             max_freq_for_filters = 70)
                             for _ in range(n_channels)]
 
-class MySignal:
-    def __init__(self, x):
-        self.data = x
-        self.n_samples = len(x)
 
 time_axis_1 = list()
 minutes = seconds = ms = 0
@@ -74,8 +71,9 @@ for i in range(signals.shape[0] // (256//2)):
 for ch in range(n_channels):
     print(ch)
     #obj = MySignal(signals[:256 * 300, ch])
-    obj = MySignal(signals[:, ch])
-    preprocessors[ch].preemphasis_alpha = 0.50
+    obj = preprocessor.MySignalStats(signals[:, ch])
+    preprocessors[ch].preemphasis_alpha = 0.50 #  0.95
+    obj.data += 100
     preemphasis, spectrogram, fb, fb_choi, mfcc = preprocessors[ch].preprocess_an_utterance(obj, verbose = 1)
 
     '''
@@ -122,9 +120,14 @@ for ch in range(n_channels):
     #
     axis = axes[2]
     axis.grid()
-    time_axis_2 = range(len(mfcc[:, 0]))
-    axis.plot(time_axis_2, mfcc[:, 0], label = 'energy')
-    axis.plot(time_axis_2, mfcc[:, 1], label = 'CC1')
+    #time_axis_2 = range(len(mfcc[:, 0]))
+    #axis.plot(time_axis_2, mfcc[:, 0], label = 'energy')
+    #axis.plot(time_axis_2, mfcc[:, 1], label = 'CC1')
+    time_axis_2 = range(len(obj.time_domain_statistics))
+    axis.plot(time_axis_2, obj.time_domain_statistics[:, 0], label = 'mean')
+    axis.plot(time_axis_2, obj.time_domain_statistics[:, 1], label = 'std')
+    axis.plot(time_axis_2, obj.time_domain_statistics[:, 2], label = 'kurtosis')
+    axis.plot(time_axis_2, obj.time_domain_statistics[:, 3], label = 'skewness')
     '''
     i = 0
     for e in ed:

@@ -1,5 +1,5 @@
 import numpy as np
-from scipy import signal, fftpack, constants
+from scipy import signal, fftpack, constants, stats
 
 from FilterBank import FilterBank
 from CepstralCoefficients import CepstralCoefficients
@@ -16,7 +16,8 @@ class Preprocessor:
                         window_length,
                         fb_length = None,
                         max_freq_for_filters = None,
-                        use_mel_scale = True):
+                        use_mel_scale = True,
+                        use_eeg_filtering = False):
         ####################################
         self.sampling_rate = sampling_rate # In Hertz
         self.subsampling_period = subsampling_period # In milliseconds
@@ -37,6 +38,7 @@ class Preprocessor:
                                         self.len_fft_window // 2,
                                         fb_length = fb_length,
                                         use_mel_scale = use_mel_scale,
+                                        use_eeg_filtering = use_eeg_filtering,
                                         max_freq_for_filters = max_freq_for_filters)
         ####################################
         self.cepstral = CepstralCoefficients(self.filter_bank.get_num_filters(), 13)
@@ -130,3 +132,47 @@ class Preprocessor:
 
         return preemphasis, spectrogram, fb, fb_choi, mfcc
         ### END OF preprocess_an_utterance() ###
+
+
+
+class MySignalStats:
+    """
+        Class for computing the statistics in the time domain for EEG, as
+        indicated in
+
+            Title: Seizure Prediction in Scalp EEG Using 3D Convolutional Neural
+                   Networks With an Image-Based Approach
+            Authors: Ahmet Remzi Ozcan and Sarp Erturk, Senior Member, IEEE
+            Journal: IEEE TRANSACTIONS ON NEURAL SYSTEMS AND REHABILITATION
+                     ENGINEERING, VOL. 27, NO. 11, NOVEMBER 2019
+
+    """
+    def __init__(self, x, window_length = 256 * 4, subsampling_period = 256 * 2):
+        self.data = x
+        self.n_samples = len(x)
+        self.n_subsamples = (len(x) - subsampling_period) // subsampling_period
+        time_domain_statistics = list()
+        i = window_length
+        count = 0
+        while i <= self.n_samples:
+            x = self.data[i - window_length : i]
+            mean = x.mean()
+            std  = x.std()
+            kurt = stats.kurtosis(x)
+            skew = stats.mstats.skew(x)
+            time_domain_statistics.append([mean, std, kurt, skew.data])
+            i += subsampling_period
+        self.time_domain_statistics = np.array(time_domain_statistics)
+        assert len(self.time_domain_statistics) == self.n_subsamples
+
+    def get_mean(self):
+        return self.stats[:, 0]
+
+    def get_std(self):
+        return self.stats[:, 1]
+
+    def get_kurtosis(self):
+        return self.stats[:, 2]
+
+    def get_skewness(self):
+        return self.stats[:, 3]

@@ -8,48 +8,49 @@ class FilterBank:
     to work with other signals.
     """
 
-    def __init__(self, sample_rate = 16000.0,
+    def __init__(self, sampling_rate = 16000.0,
                  num_channels_fft = 256,
                  fb_length = None,
                  use_mel_scale = True,
+                 use_eeg_filtering = False,
                  max_freq_for_filters = None):
-        self.sample_rate = sample_rate
+        self.sampling_rate = sampling_rate
         self.num_channels_fft = num_channels_fft # Number of channels in the output of the FFT
         self.fb_length = fb_length
         self.use_mel_scale = use_mel_scale
+        self.use_eeg_filtering = use_eeg_filtering
         self.max_freq_for_filters = max_freq_for_filters
 
-        if self.fb_length is None:
+        if self.use_mel_scale and self.use_eeg_filtering:
+            raise Exception('Choose either Mel scale or EEG filtering or neither, but not both!')
+
+        if self.use_eeg_filtering:
+            self.fb_length = 8
+        elif self.fb_length is None:
             # if not specified, then decide according to sampling rate
-            if sample_rate <= 8000.0:
+            if sampling_rate <= 8000.0:
                 self.fb_length = 31
-            elif sample_rate <= 11025.0:
+            elif sampling_rate <= 11025.0:
                 self.fb_length = 31
-            elif sample_rate <= 16000.0:
+            elif sampling_rate <= 16000.0:
                 self.fb_length = 40
-            elif sample_rate <= 22050.0:
+            elif sampling_rate <= 22050.0:
                 self.fb_length = 40
-            elif sample_rate <= 44100.0:
+            elif sampling_rate <= 44100.0:
                 self.fb_length = 40
             else:
                 sys.exit(1)
 
         if self.max_freq_for_filters is None:
-            self.max_freq_for_filters = sample_rate // 2
+            self.max_freq_for_filters = sampling_rate // 2
 
         self.coeffs = np.zeros([self.fb_length, self.num_channels_fft])
-        self.freqs = np.zeros(self.num_channels_fft)
+        self.freqs = np.linspace(0, self.sampling_rate, 1 + self.num_channels_fft)
 
         if self.use_mel_scale:
-            delta = sample_rate / (2.0 * self.num_channels_fft)
-            self.freqs[0] = delta;
-            for i in range(1, self.num_channels_fft):
-                self.freqs[i] = self.freqs[i - 1] + delta
-
-            #print("freqs: ", self.freqs)
 
             min_mel = self.Hz_to_Mel(70.0) # 64.0
-            max_mel = self.Hz_to_Mel(min(0.48 * sample_rate, 0.48*16000.0))
+            max_mel = self.Hz_to_Mel(min(0.48 * sampling_rate, 0.48 * 16000.0))
             mel_incr = (max_mel - min_mel) / (self.fb_length - 1)
 
             current_mel = min_mel
@@ -60,13 +61,16 @@ class FilterBank:
                 next_freq     = self.Mel_to_Hz(current_mel + mel_incr)
                 sum_coeffs = 0.0
                 max_coeffs = 0.0
-                for k in range(len(self.freqs)):
-                    if self.freqs[k] >= previous_freq and self.freqs[k] <= current_freq:
-                        coeff = (self.freqs[k] - previous_freq) / (current_freq - previous_freq)
-                    elif self.freqs[k] >= current_freq and self.freqs[k] <= next_freq:
-                        coeff = (next_freq - self.freqs[k]) / (next_freq - current_freq)
+                for k in range(len(self.freqs)- 1):
+                    if self.freqs[k + 1] < previous_freq or self.freqs[k] > next_freq:
+                        coef = 0.0
                     else:
-                        coeff = 0.0
+                        hz = (self.freqs[k] + self.freqs[k+1]) / 2
+
+                        if hz <= current_freq:
+                            coeff = (hz - previous_freq) / (current_freq - previous_freq)
+                        else:
+                            coeff = (next_freq - hz) / (next_freq - current_freq)
 
                     self.coeffs[i, k] = coeff
                     sum_coeffs += coeff
@@ -75,21 +79,55 @@ class FilterBank:
                 """
                     Should be normalized, but you can comment next loop if you
                     want to plot the coefficients
-                """
                 for k in range(len(self.freqs)):
                     self.coeffs[i, k] /= sum_coeffs
+                """
+                self.coeffs[i, :] /= (1.0e-6 + sum_coeffs)
 
                 current_mel = current_mel + mel_incr
 
+        elif self.use_eeg_filtering: # use the filtering proposed in literature
+            '''
+            Title: Seizure Prediction in Scalp EEG Using 3D Convolutional Neural
+                   Networks With an Image-Based Approach
+            Authors: Ahmet Remzi Ozcan and Sarp Erturk, Senior Member, IEEE
+            Journal: IEEE TRANSACTIONS ON NEURAL SYSTEMS AND REHABILITATION
+                     ENGINEERING, VOL. 27, NO. 11, NOVEMBER 2019
+
+
+                 filter channel | spectral band
+                ----------------|------------------------------------
+                        1       | $\delta$     0.5 Hz -   4.0 Hz
+                        2       | $\theta$     4.0 Hz -   8.0 Hz
+                        3       | $\alpha$     8.0 Hz -  13.0 Hz
+                        4       | $\beta$     13.0 Hz -  30.0 Hz
+                        5       | $\gamma 1$  30.0 Hz -  50.0 Hz
+                        6       | $\gamma 2$  50.0 Hz -  75.0 Hz
+                        7       | $\gamma 3$  75.0 Hz - 100.0 Hz
+                        8       | $\gamma 4$ 100.0 Hz - 128.0 Hz
+                                |
+            '''
+            boundaries = [0.5, 4, 8, 13, 30, 50, 75, 100, 128]
+
+            for i in range(self.fb_length):
+                sum_coeffs = 0.0
+                max_coeffs = 0.0
+                for k in range(len(self.freqs)- 1):
+                    if boundaries[i] <= self.freqs[k] and self.freqs[k + 1] <= boundaries[i + 1]:
+                        coeff = 1.0
+                    elif self.freqs[k] <  boundaries[i]     <= self.freqs[k + 1] or \
+                         self.freqs[k] <= boundaries[i + 1] <  self.freqs[k + 1]:
+                        coeff = 0.5
+                    else:
+                        coeff = 0.0
+
+                    self.coeffs[i, k] = coeff
+                    sum_coeffs += coeff
+                    max_coeffs = max(max_coeffs, coeff)
+
+                self.coeffs[i, :] /= (1.0e-6 + sum_coeffs)
+
         else: # otherwise a equalized scale is used
-
-            self.coeffs = np.zeros([self.fb_length, self.num_channels_fft])
-            self.freqs = np.zeros(self.num_channels_fft)
-
-            delta = sample_rate / (2.0 * self.num_channels_fft)
-            self.freqs[0] = delta;
-            for i in range(1, self.num_channels_fft):
-                self.freqs[i] = self.freqs[i - 1] + delta
 
             delta = self.max_freq_for_filters / self.fb_length
             current_freq = 0
@@ -99,21 +137,22 @@ class FilterBank:
 
                 sum_coeffs = 0.0
                 max_coeffs = 0.0
-                for k in range(len(self.freqs)):
-                    if self.freqs[k] >= previous_freq and self.freqs[k] <= current_freq:
-                        coeff = (self.freqs[k] - previous_freq) / (current_freq - previous_freq)
-                    elif self.freqs[k] >= current_freq and self.freqs[k] <= next_freq:
-                        coeff = (next_freq - self.freqs[k]) / (next_freq - current_freq)
+                for k in range(len(self.freqs)- 1):
+                    if self.freqs[k + 1] < previous_freq or self.freqs[k] > next_freq:
+                        coef = 0.0
                     else:
-                        coeff = 0.0
+                        hz = (self.freqs[k] + self.freqs[k+1]) / 2
+
+                        if hz <= current_freq:
+                            coeff = (hz - previous_freq) / (current_freq - previous_freq)
+                        else:
+                            coeff = (next_freq - hz) / (next_freq - current_freq)
 
                     self.coeffs[i, k] = coeff
                     sum_coeffs += coeff
                     max_coeffs = max(max_coeffs, coeff)
 
-                for k in range(len(self.freqs)):
-                    self.coeffs[i, k] /= (1.0e-6 + sum_coeffs)
-
+                self.coeffs[i, :] /= (1.0e-6 + sum_coeffs)
                 current_freq += delta
             # end for
 
@@ -144,7 +183,7 @@ class FilterBank:
         return 700 * (10.0 ** (mels / 2595.0) - 1)
 
     def centralBin(self, freq):
-        i = int(round((2. * self.num_channels_fft * freq) / self.sample_rate))
+        i = int(round((2. * self.num_channels_fft * freq) / self.sampling_rate))
         i = max(i, 0)
         i = min(i, self.num_channels_fft - 1)
         return i

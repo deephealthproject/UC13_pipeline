@@ -1,5 +1,11 @@
 #!/bin/bash
 
+#
+# we suggest to run this scripts in a similar way to:
+#
+# nohup scripts/edf_to_filter_bank.sh  >log/edf2fbank.out 2>log/edf2fbank.err &
+#
+
 file_list_1=$(find ../clean_signals/chb* -type f -name "*.edf.pbz2" | sort)
 
 file_list_2=""
