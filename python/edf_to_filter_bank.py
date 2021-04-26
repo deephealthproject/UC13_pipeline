@@ -50,6 +50,7 @@ def process_file(input_filename):
                     for _ in range(n_channels)]
 
     fbank = list()
+    time_domain_statistics = list()
     for ch in range(n_channels):
         obj = MySignal(signals[:, ch])
         # a value of 0.95 for Preemphasis is used to pre-process audio signals in
@@ -60,11 +61,21 @@ def process_file(input_filename):
         preemphasis, spectrogram, fb, fb_choi, mfcc = preprocessors[ch].preprocess_an_utterance(obj, verbose = 0)
 
         fbank.append(fb)
+
+        mss = preprocessor.MySignalStats(preemphasis)
+        time_domain_statistics.append(mss.time_domain_statistics, window_length = 4 * 256, subsampling_period = 2 * 256) # 4 seconds window every 2 secons
+
     X = numpy.zeros([len(fbank[0]), len(fbank), fbank[0].shape[1]])
+    S = numpy.zeros([len(time_domain_statistics[0]), len(time_domain_statistics), time_domain_statistics[0].shape[1]])
     for i in range(len(fbank)):
         X[:, i, :] = fbank[i][:, :]
+    for i in range(len(time_domain_statistics)):
+        S[:, i, :] = time_domain_statistics[i][:, :]
+
     output_filename = input_filename.replace('.edf.', '.fbank.')
     compress_to_pickle(output_filename, X)
+    output_filename = input_filename.replace('.edf.', '.td_stats.')
+    compress_to_pickle(output_filename, S)
     return '%18.6f %s' % (time.time(), input_filename)
 
 with mp.Pool(processes = mp.cpu_count()) as pool:
