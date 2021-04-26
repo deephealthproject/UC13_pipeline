@@ -72,7 +72,11 @@ for ch in range(n_channels):
     print(ch)
     #obj = MySignal(signals[:256 * 300, ch])
     obj = preprocessor.MySignalStats(signals[:, ch])
-    preprocessors[ch].preemphasis_alpha = 0.50 #  0.95
+    # a value of 0.95 for Preemphasis is used to pre-process audio signals in
+    # speech recognizers, however, in the case of EEG we are interested in low
+    # frequencies starting at 0.5 Hz, so using a value of 0.5 for Preemphasis
+    # helps to remove the DC component while keeping the energy at low frequencies
+    preprocessors[ch].preemphasis_alpha = 0.50
     obj.data += 100
     preemphasis, spectrogram, fb, fb_choi, mfcc = preprocessors[ch].preprocess_an_utterance(obj, verbose = 1)
 
