@@ -63,7 +63,7 @@ class FilterBank:
                 max_coeffs = 0.0
                 for k in range(len(self.freqs)- 1):
                     if self.freqs[k + 1] < previous_freq or self.freqs[k] > next_freq:
-                        coef = 0.0
+                        coeff = 0.0
                     else:
                         hz = (self.freqs[k] + self.freqs[k+1]) / 2
 
@@ -139,7 +139,7 @@ class FilterBank:
                 max_coeffs = 0.0
                 for k in range(len(self.freqs)- 1):
                     if self.freqs[k + 1] < previous_freq or self.freqs[k] > next_freq:
-                        coef = 0.0
+                        coeff = 0.0
                     else:
                         hz = (self.freqs[k] + self.freqs[k+1]) / 2
 

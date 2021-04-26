@@ -46,6 +46,7 @@ def process_file(input_filename):
                                                 window_length = 4000, # in ms
                                                 fb_length = 20, # number of filters
                                                 use_mel_scale = False,
+                                                use_eeg_filtering = False,
                                                 max_freq_for_filters = 70)
                     for _ in range(n_channels)]
 
@@ -53,17 +54,19 @@ def process_file(input_filename):
     time_domain_statistics = list()
     for ch in range(n_channels):
         obj = MySignal(signals[:, ch])
+        #
         # a value of 0.95 for Preemphasis is used to pre-process audio signals in
         # speech recognizers, however, in the case of EEG we are interested in low
         # frequencies starting at 0.5 Hz, so using a value of 0.5 for Preemphasis
         # helps to remove the DC component while keeping the energy at low frequencies
+        #
         preprocessors[ch].preemphasis_alpha = 0.50
         preemphasis, spectrogram, fb, fb_choi, mfcc = preprocessors[ch].preprocess_an_utterance(obj, verbose = 0)
 
         fbank.append(fb)
 
-        mss = preprocessor.MySignalStats(preemphasis)
-        time_domain_statistics.append(mss.time_domain_statistics, window_length = 4 * 256, subsampling_period = 2 * 256) # 4 seconds window every 2 secons
+        mss = preprocessor.MySignalStats(preemphasis, window_length = 4 * 256, subsampling_period = 2 * 256) # 4 seconds window every 2 secons
+        time_domain_statistics.append(mss.time_domain_statistics)
 
     X = numpy.zeros([len(fbank[0]), len(fbank), fbank[0].shape[1]])
     S = numpy.zeros([len(time_domain_statistics[0]), len(time_domain_statistics), time_domain_statistics[0].shape[1]])

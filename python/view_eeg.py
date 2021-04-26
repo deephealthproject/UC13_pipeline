@@ -33,7 +33,7 @@ preprocessors = [preprocessor.Preprocessor( sampling_rate = 256, # in Hz
                                             window_length = 4000, # in ms
                                             fb_length = 20, # number of filters
                                             use_mel_scale = False,
-                                            use_eeg_filtering = True,
+                                            use_eeg_filtering = False,
                                             max_freq_for_filters = 70)
                             for _ in range(n_channels)]
 
@@ -78,7 +78,7 @@ for ch in range(n_channels):
     # helps to remove the DC component while keeping the energy at low frequencies
     preprocessors[ch].preemphasis_alpha = 0.50
     obj.data += 100
-    preemphasis, spectrogram, fb, fb_choi, mfcc = preprocessors[ch].preprocess_an_utterance(obj, verbose = 1)
+    preemphasis, spectrogram, fb, fb_choi, mfcc = preprocessors[ch].preprocess_an_utterance(obj, verbose = 0)
 
     '''
     ed = decomposition(signal = obj.data,
