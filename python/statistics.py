@@ -7,7 +7,7 @@ from data_utils import decompress_pickle
 '''
 an example to run this script:
 
-    find ../clean_signals/chb01/ -type f -name "*.fbank.pkl.pbz2" | python python/statistics.py
+    find ../clean_signals/chb01/ -type f -name "*.fbank.pbz2" | python python/statistics.py
 
 '''
 

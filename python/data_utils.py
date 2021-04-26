@@ -44,7 +44,7 @@ def load_data_one_patient(base_dir = '.',
     Load data from one directory asuming all files belong to the same patient.
 
     :param str base_dir:
-        Path to the directory where the files with extension ".pkl.pbz2" are located.
+        Path to the directory where the files with extension ".edf.pbz2" are located.
 
     :param int n_processes:
         Number of jobs/threads to launch in parallel to load data from files.
@@ -69,7 +69,7 @@ def load_data_one_patient(base_dir = '.',
 
     filenames = list()
     for filename in os.listdir(base_dir):
-        if filename.endswith(".pkl.pbz2"):
+        if filename.endswith(".edfl.pbz2"):
             filenames.append(base_dir + '/' + filename)
 
     return load_files(filenames,

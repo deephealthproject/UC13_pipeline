@@ -31,7 +31,7 @@ def load_file(filename, verbose = 0):
     #
     labels     = numpy.load(filename + '.labels.npy', allow_pickle = True)
     timestamps = numpy.load(filename + '.timestamp.npy', allow_pickle = True)
-    data       = decompress_pickle(filename + '.fbank.pkl.pbz2')
+    data       = decompress_pickle(filename + '.fbank.pbz2')
     #
     return data, labels, timestamps
 
@@ -184,7 +184,7 @@ class DataGenerator:
                 pos = (B * batch_index + b) % len(self.indexes)
 
                 x, y, t, i = self.data[self.indexes[pos]]
-                
+
                 X.append(numpy.expand_dims(x[i], axis = 0))
                 Y.append(y)
                 T.append(t)
@@ -200,7 +200,7 @@ class DataGenerator:
                 pos = (B * batch_index + b) % len(self.indexes)
 
                 x, y, t, i = self.data[self.indexes[pos]]
-                
+
                 X.append(numpy.expand_dims(x[i], axis = 0))
                 Y.append(y)
                 T.append(t)

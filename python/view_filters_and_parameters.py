@@ -27,6 +27,6 @@ fb.FilterBank(sample_rate = 256,
             num_channels_fft = int(num_channels_fft // 2),
             fb_length = 20,
             use_mel_scale = False,
-            max_freq_for_filters = 50).view_filters()
+            max_freq_for_filters = 70).view_filters()
 
 cc.CepstralCoefficients(20, 13).view_dct()

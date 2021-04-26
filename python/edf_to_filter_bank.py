@@ -1,5 +1,8 @@
 import sys
 import numpy
+import time
+
+import multiprocessing as mp
 
 import Preprocessor as preprocessor
 
@@ -19,10 +22,15 @@ an example to run this script:
 
 file = sys.stdin
 
+edf_filenames = list()
 for line in file:
     input_filename = line.strip()
+    edf_filenames.append(input_filename)
 
+
+def process_file(input_filename):
     print('processing ... ', input_filename, flush = True)
+    #return '%18.6f %s' % (time.time(), input_filename)
 
     data_pieces = load_file(input_filename,
                             exclude_seizures = False,
@@ -31,11 +39,11 @@ for line in file:
                             verbose = 0)
 
     signals = data_pieces[0][0]
-    n_channels = signals.shape[1]
+    n_channels = min(signals.shape[1], 23) # warning: the limit to 23 channels is set manually
 
     preprocessors = [preprocessor.Preprocessor( sampling_rate = 256, # in Hz
-                                                subsampling_period = 5000, # in ms
-                                                window_length = 10000, # in ms
+                                                subsampling_period = 2000, # in ms
+                                                window_length = 4000, # in ms
                                                 fb_length = 20, # number of filters
                                                 use_mel_scale = False,
                                                 max_freq_for_filters = 70)
@@ -53,3 +61,11 @@ for line in file:
         X[:, i, :] = fbank[i][:, :]
     output_filename = input_filename.replace('.edf.', '.fbank.')
     compress_to_pickle(output_filename, X)
+    return '%18.6f %s' % (time.time(), input_filename)
+
+with mp.Pool(processes = mp.cpu_count()) as pool:
+    #pool_output = pool.map(my_func, edf_filenames)
+    pool_output = pool.map(process_file, edf_filenames)
+
+for s in pool_output:
+    print(s)

@@ -15,7 +15,7 @@ def decompress_pickle(filename):
 
 verbose = 0
 
-#filename = 'clean_signals/chb01/chb01_07.edf.pkl.pbz2'
+#filename = 'clean_signals/chb01/chb01_07.edf.pbz2'
 
 data_pieces = list()
 

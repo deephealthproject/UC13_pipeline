@@ -12,8 +12,8 @@ from data_utils import load_file
 
 
 
-#filename = '../clean_signals/chb01/chb01_03.edf.pkl.pbz2'
-filename = '../clean_signals/chb01/chb01_19.edf.pkl.pbz2'
+#filename = '../clean_signals/chb01/chb01_03.edf.pbz2'
+filename = '../clean_signals/chb01/chb01_19.edf.pbz2'
 
 data_pieces = load_file(filename,
                         exclude_seizures = False,
@@ -29,8 +29,8 @@ print(len(signals), signals.shape)
 
 #preprocessors = [preprocessor.Preprocessor(256, 20000, 60000) for _ in range(n_channels)]
 preprocessors = [preprocessor.Preprocessor( sampling_rate = 256, # in Hz
-                                            subsampling_period = 5000, # in ms
-                                            window_length = 10000, # in ms
+                                            subsampling_period = 2000, # in ms
+                                            window_length = 4000, # in ms
                                             fb_length = 20, # number of filters
                                             use_mel_scale = False,
                                             max_freq_for_filters = 70)
@@ -75,7 +75,7 @@ for ch in range(n_channels):
     print(ch)
     #obj = MySignal(signals[:256 * 300, ch])
     obj = MySignal(signals[:, ch])
-    preprocessors[ch].preemphasis_alpha = 0.90
+    preprocessors[ch].preemphasis_alpha = 0.50
     preemphasis, spectrogram, fb, fb_choi, mfcc = preprocessors[ch].preprocess_an_utterance(obj, verbose = 1)
 
     '''
