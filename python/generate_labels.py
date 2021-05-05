@@ -31,7 +31,7 @@ for line in sys.stdin:
 
     current_time_offset = datetime.timedelta(seconds = 0)
 
-    subsampling_period = datetime.timedelta(seconds = 5)
+    subsampling_period = datetime.timedelta(seconds = 2)
 
     f = open(txt_filename, 'r')
     for l in f:
@@ -95,7 +95,7 @@ for line in sys.stdin:
             if current_ending_time < current_starting_time:
                 raise Exception(f'{current_ending_time} is previous to {current_starting_time}')
             lapse_current_file = current_ending_time - current_starting_time
-            labels_current_file = numpy.zeros((lapse_current_file - subsampling_period * 2) // subsampling_period, dtype = int)
+            labels_current_file = numpy.zeros((lapse_current_file - subsampling_period * 1) // subsampling_period, dtype = int)
             timestamps_current_file = [current_starting_time + (i + 1) * subsampling_period for i in range(len(labels_current_file))]
 
         elif l.startswith('Number of Seizures in File:'):

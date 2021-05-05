@@ -5,6 +5,7 @@ import pyedflib.highlevel as hl
 import bz2
 import pickle
 import _pickle as cPickle
+import multiprocessing as mp
 
 def compress_pickle(title, data):
     """
@@ -103,9 +104,9 @@ def process_reference_file(filename):
                 break
             #
             if line[0]=='Channel':
-                if line[2] in signal_reference:
-                    signal_reference.append(line[2] + '-2')
-                else:
+                name = line[2]
+                inv_name = name.split('-')[1] + '-' + name.split('-')[0]
+                if name not in signal_reference and inv_name not in signal_reference:
                     signal_reference.append(line[2])
     
     return signal_reference
@@ -131,7 +132,7 @@ def process_file(filename,  signal_reference, store_path):
 
     """
     
-    ignore_list = ['chb13_04.edf']
+    ignore_list = ['chb13_04.edf', 'chb12_27.edf', 'chb12_28.edf', 'chb12_29.edf', 'chb15_01.edf']
 
     dir_patient = os.path.dirname(filename)
     patient_id = os.path.basename(dir_patient)
@@ -150,7 +151,7 @@ def process_file(filename,  signal_reference, store_path):
         metadata['channels']=signal_reference
         signals, signal_headers, header = hl.read_edf(filename, digital=False)
 
-        if len(signal_headers) < len(signal_reference):
+        if len(signal_headers) < 23: # Before was len(signal_reference)
             print("Not enough signals on file ", filename)
         else:
             # Process file
@@ -158,15 +159,10 @@ def process_file(filename,  signal_reference, store_path):
                 name = signal_headers[i].get('label')
                 if name not in signal_names:
                     signal_names.append(name)
-                else:
-                    signal_names.append(name + '-2')
             
             for i in range(len(signal_names)):
                 if signal_names[i] in signal_reference:
                     signal_dict[signal_names[i]]=signals[i]
-
-            #metadata = process_metadata(summary_filename, filename_b)
-            #metadata['channels']=signal_reference
 
             if len(signal_dict) != len(signal_reference): print("ERROR ON FILE ", filename)
 
@@ -178,7 +174,7 @@ def process_file(filename,  signal_reference, store_path):
 if __name__=='__main__':
 
     signals_path = '../../UC13/physionet.org/files/chbmit/1.0.0' # Path to the data main directory
-    clean_path = 'clean_signals' # Path where to store clean data
+    clean_path = '../clean_signals' # Path where to store clean data
 
     for i in range(1, len(sys.argv)):
         if sys.argv[i] == '--signals-path':
@@ -192,13 +188,17 @@ if __name__=='__main__':
 
     signal_reference = process_reference_file(reference_file)
 
+    params = []
     for d in os.listdir(signals_path):
         if d.startswith('chb'):
             for f in os.listdir(signals_path + '/' + d):
                 if f.endswith('.edf'):
                     if not os.path.exists(clean_path + '/' + d):
                         os.makedirs(clean_path + '/' + d)
-                    #print(signals_path + '/'  + d + '/' + f)
-                    process_file(signals_path + '/' + d + '/' + f, signal_reference, clean_path + '/' + d + '/' + f)
-    
-    
+                    params.append((signals_path + '/' + d + '/' + f, signal_reference, clean_path + '/' + d + '/' + f))
+            #
+        #
+    #
+
+    with mp.Pool(mp.cpu_count()) as pool:
+        pool_output = pool.starmap(process_file, params)

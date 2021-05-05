@@ -39,14 +39,14 @@ def process_file(input_filename):
                             verbose = 0)
 
     signals = data_pieces[0][0]
-    n_channels = min(signals.shape[1], 23) # warning: the limit to 23 channels is set manually
+    n_channels = min(signals.shape[1], 21) # warning: the limit to 21 channels is set manually
 
     preprocessors = [preprocessor.Preprocessor( sampling_rate = 256, # in Hz
                                                 subsampling_period = 2000, # in ms
                                                 window_length = 4000, # in ms
                                                 fb_length = 20, # number of filters
                                                 use_mel_scale = False,
-                                                use_eeg_filtering = False,
+                                                use_eeg_filtering = True,
                                                 max_freq_for_filters = 70)
                     for _ in range(n_channels)]
 
@@ -65,7 +65,7 @@ def process_file(input_filename):
 
         fbank.append(fb)
 
-        mss = preprocessor.MySignalStats(preemphasis, window_length = 4 * 256, subsampling_period = 2 * 256) # 4 seconds window every 2 secons
+        mss = preprocessor.MySignalStats(preemphasis, window_length = 4 * 256, subsampling_period = 2 * 256) # 4 seconds window every 2 seconds
         time_domain_statistics.append(mss.time_domain_statistics)
 
     X = numpy.zeros([len(fbank[0]), len(fbank), fbank[0].shape[1]])
@@ -82,7 +82,6 @@ def process_file(input_filename):
     return '%18.6f %s' % (time.time(), input_filename)
 
 with mp.Pool(processes = mp.cpu_count()) as pool:
-    #pool_output = pool.map(my_func, edf_filenames)
     pool_output = pool.map(process_file, edf_filenames)
 
 for s in pool_output:

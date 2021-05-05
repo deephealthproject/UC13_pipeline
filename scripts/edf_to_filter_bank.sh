@@ -7,8 +7,8 @@
 #
 
 # Use the line with grep and egrep to skip corrupted or incomplete files
-#file_list_1=$(find ../clean_signals/chb* -type f -name "*.edf.pbz2" | sort)
-file_list_1=$(find ../clean_signals/chb* -type f -name "*.edf.pbz2" | egrep -v '/chb12_2[789]' | grep -v '/chb15_01'| sort)
+file_list_1=$(find ../clean_signals/chb* -type f -name "*.edf.pbz2" | sort)
+#file_list_1=$(find ../clean_signals/chb* -type f -name "*.edf.pbz2" | egrep -v '/chb12_2[789]' | grep -v '/chb15_01'| sort)
 
 file_list_2=""
 for file in ${file_list_1}

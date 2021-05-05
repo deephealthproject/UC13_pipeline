@@ -69,7 +69,7 @@ def load_data_one_patient(base_dir = '.',
 
     filenames = list()
     for filename in os.listdir(base_dir):
-        if filename.endswith(".edfl.pbz2"):
+        if filename.endswith(".edf.pbz2"):
             filenames.append(base_dir + '/' + filename)
 
     return load_files(filenames,

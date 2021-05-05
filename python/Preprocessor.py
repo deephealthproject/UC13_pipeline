@@ -1,3 +1,4 @@
+import math
 import numpy as np
 from scipy import signal, fftpack, constants, stats
 
@@ -110,7 +111,9 @@ class Preprocessor:
         fb = list()
         fb_choi = list()
         mfcc = list()
-        for t in range(0, utterance.n_samples - lhw, delta):
+        #for t in range(0, utterance.n_samples - lhw, delta):
+        t = 0
+        while t + lhw <= utterance.n_samples:
             X = preemphasis[t:t+lhw] * self.hamming_window
             psd, non_filtered, choi, cc = self.extract_features(X, (1.0 * t / self.sampling_rate <= 0.100))
 
@@ -124,6 +127,8 @@ class Preprocessor:
             fb.append(non_filtered)
             fb_choi.append(choi)
             mfcc.append(cc)
+            #
+            t += delta
 
         spectrogram = np.array(spectrogram)
         fb = np.array(fb)
@@ -160,10 +165,26 @@ class MySignalStats:
             std  = x.std()
             kurt = stats.kurtosis(x)
             skew = stats.mstats.skew(x)
-            time_domain_statistics.append([mean, std, kurt, skew.data])
+
+            #d_x = x[1:] - x[:-1]
+            d_x = self.time_derivative(x, [-3, -2, -1, 0, 1, 2, 3])
+            mobility = math.sqrt(d_x.var() / (1.0e-3 + x.var()))
+            #dd_x = d_x[1:] - d_x[:-1]
+            dd_x = self.time_derivative(d_x, [-3, -2, -1, 0, 1, 2, 3])
+            d_mobility = math.sqrt(dd_x.var() / (1.0e-3 + d_x.var()))
+            complexity = d_mobility / mobility
+
+            time_domain_statistics.append([mean, std, kurt, skew.data, mobility, complexity])
+            #
             i += subsampling_period
+
         self.time_domain_statistics = np.array(time_domain_statistics)
         assert len(self.time_domain_statistics) == self.n_subsamples
+
+    def time_derivative(self, x, alphas):
+        y = np.convolve(x, np.array(alphas), mode = 'valid')
+        y /= sum(abs(np.array(alphas)))
+        return y
 
     def get_mean(self):
         return self.stats[:, 0]
@@ -176,3 +197,9 @@ class MySignalStats:
 
     def get_skewness(self):
         return self.stats[:, 3]
+
+    def get_mobility(self):
+        return self.stats[:,4]
+
+    def get_complexity(self):
+        return self.stats[:,5]
