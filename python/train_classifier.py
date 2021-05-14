@@ -5,8 +5,8 @@ import numpy
 from pyeddl import eddl
 from pyeddl.tensor import Tensor
 
-from data_utils_fbank import DataGenerator
-from models_01 import model_classifier_1a
+from data_utils_eeg import DataGenerator
+from models_01 import model_classifier_1a, model_classifier_2a
 
 
 if __name__ == '__main__':
@@ -36,18 +36,21 @@ if __name__ == '__main__':
         raise Exception('Nothing can be done without data, my friend!')
 
 
-    dg = DataGenerator(index_filenames, batch_size = batch_size, n_processes = 16)
+    dg = DataGenerator(index_filenames, 
+                       batch_size = batch_size,
+                       in_training_mode = True,
+                       verbose = 1)
 
     x, y, t = dg[0]
-    input_shape = x.shape[1:]
+    input_shape = (1,) + x.shape[1:]
     if model_id == '1a':
         net = model_classifier_1a(input_shape, num_classes = 2, filename = model_filename)
     #elif model_id == '1b':
     #    net = model_1a(input_shape, input_shape, filename = model_filename)
-    #elif model_id == '2':
-    #    net = model_2(input_shape, input_shape, filename = model_filename)
+    elif model_id == '2a':
+        net = model_classifier_2a(input_shape, num_classes = 2, filename = model_filename)
     else:
-        raise Exception('You have to indicated a model id!')
+        raise Exception('You have to indicate a model id!')
 
 
     log_file = open(f'log/model_classifier_{model_id}.log', 'a')
@@ -60,7 +63,7 @@ if __name__ == '__main__':
         c1 = 0
         for j in range(len(dg)):
             x, y, t = dg[j]
-            #x = numpy.expand_dims(x, axis = 1)
+            x = numpy.expand_dims(x, axis = 1)
             indices = list(range(len(x)))
             x = Tensor.fromarray(x)
             c0 += len(y)

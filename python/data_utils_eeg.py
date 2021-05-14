@@ -3,6 +3,7 @@ import sys
 import bz2
 import pickle
 import _pickle as cPickle
+from tqdm import tqdm
 import numpy
 from sklearn.preprocessing import PolynomialFeatures
 
@@ -102,6 +103,7 @@ class DataGenerator:
                     self.filenames.append(l.strip())
                 f.close()
         #
+        self.whole_data = list()
         self.data = list()
         self.data_class_1 = list()
         self.input_shape = None
@@ -112,6 +114,7 @@ class DataGenerator:
                 #print(x_fbank.shape, x_stats.shape, labels.shape, timestamp.shape)
                 #(1799,21,8), (1799,21,6), (1799,), (1799,)
                 x = numpy.concatenate((x_fbank, x_stats), axis=2)
+                self.whole_data.append(x)
 
                 if self.input_shape is None:
                     self.input_shape = x.shape[1:]
@@ -157,8 +160,9 @@ class DataGenerator:
                 comp_stddevs = []
                 #
                 counts = []     # Data counter
+                
 
-                for x, y, t, i in self.data + self.data_class_1:
+                for x in tqdm(self.whole_data):
                     x_fbank = x[:,:,:8]
                     x_mean = x[:,:,8]
                     x_std = x[:,:,9]
@@ -167,8 +171,8 @@ class DataGenerator:
                     x_mob = x[:,:,12]
                     x_comp = x[:,:,13]
                     
-                    fbank_means.append(x_fbank.mean(axis=0))
-                    fbank_stddevs.append(x_fbank.std(axis=0))
+                    fbank_means.append(x_fbank.mean())
+                    fbank_stddevs.append(x_fbank.std())
                     mean_means.append(x_mean.mean(axis=0))
                     mean_stddevs.append(x_mean.std(axis=0))
                     std_means.append(x_std.mean(axis=0))
@@ -185,8 +189,8 @@ class DataGenerator:
                 #
                 self.fbank_mean = sum([m * c for m, c in zip(fbank_means, counts)])
                 self.fbank_std = sum([s * c for s, c in zip(fbank_stddevs, counts)])
-                self.fbank_mean /= sum(counts)
-                self.fbank_std /= sum(counts)
+                self.fbank_mean /= 8 * sum(counts) # We use one mean and std for the 8 channels in frequency
+                self.fbank_std /= 8 * sum(counts)
                 
                 self.td_stats_means = []    # Lists with time domain statistics means and stdevs
                 self.td_stats_stddevs = []  # 0: mean, 1: std, 2: kurtosis, 3: skewness 4: Mobility 5: Complexity
@@ -201,18 +205,56 @@ class DataGenerator:
                     std /= sum(counts)
                     self.td_stats_means.append(mean)
                     self.td_stats_stddevs.append(std)
+
+                print("STATS")
+                print("fbank_mean values", self.fbank_mean)
+                print("fbank_std values", self.fbank_std)
+                print("td_stats_mean mean values", self.td_stats_means[0])
+                print("td_stats_mean std values", self.td_stats_stddevs[0])
+                print("td_stats_std mean values", self.td_stats_means[1])
+                print("td_stats_std std values", self.td_stats_stddevs[1])
+                print("td_stats_kurtosis mean values", self.td_stats_means[2])
+                print("td_stats_kurtosis std values", self.td_stats_stddevs[2])
+                print("td_stats_skew mean values", self.td_stats_means[3])
+                print("td_stats_skew std values", self.td_stats_stddevs[3])
+                print("td_stats_mob mean values", self.td_stats_means[4])
+                print("td_stats_mob std values", self.td_stats_stddevs[4])
+                print("td_stats_compl mean values", self.td_stats_means[5])
+                print("td_stats_compl std values", self.td_stats_stddevs[5])
+                print('\n\n MAX-MIN')
+
+                print("fbank_mean values(max, min): ", numpy.amax(self.fbank_mean), numpy.amin(self.fbank_mean))
+                print("fbank_mean values(max, min): ", numpy.amax(self.fbank_std), numpy.amin(self.fbank_std))
+                print("td_stats_mean mean values(max, min): ", numpy.amax(self.td_stats_means[0]), numpy.amin(self.td_stats_means[0]))
+                print("td_stats_mean std values(max, min): ", numpy.amax(self.td_stats_stddevs[0]), numpy.amin(self.td_stats_stddevs[0]))
+                print("td_stats_std mean values(max, min): ", numpy.amax(self.td_stats_means[1]), numpy.amin(self.td_stats_means[1]))
+                print("td_stats_std std values(max, min): ", numpy.amax(self.td_stats_stddevs[1]), numpy.amin(self.td_stats_stddevs[1]))
+                print("td_stats_kurtosis mean values(max, min): ", numpy.amax(self.td_stats_means[2]), numpy.amin(self.td_stats_means[2]))
+                print("td_stats_kurtosis std values(max, min): ", numpy.amax(self.td_stats_stddevs[2]), numpy.amin(self.td_stats_stddevs[2]))
+                print("td_stats_skew mean values(max, min): ", numpy.amax(self.td_stats_means[3]), numpy.amin(self.td_stats_means[3]))
+                print("td_stats_skew std values(max, min): ", numpy.amax(self.td_stats_stddevs[3]), numpy.amin(self.td_stats_stddevs[3]))
+                print("td_stats_mob mean values(max, min): ", numpy.amax(self.td_stats_means[4]), numpy.amin(self.td_stats_means[4]))
+                print("td_stats_mob std values(max, min): ", numpy.amax(self.td_stats_stddevs[4]), numpy.amin(self.td_stats_stddevs[4]))
+                print("td_stats_compl mean values(max, min): ", numpy.amax(self.td_stats_means[5]), numpy.amin(self.td_stats_means[5]))
+                print("td_stats_compl std values(max, min): ", numpy.amax(self.td_stats_stddevs[5]), numpy.amin(self.td_stats_stddevs[5]))
                 
-                array = numpy.array([self.fbank_mean, self.fbank_std,
-                                     self.td_stats_means, self.td_stats_stddevs], dtype = object)
-                
-                numpy.save('models/eeg_statistics.npy', array)
+                stats_dict = {}
+                stats_dict['fbank_mean'] = self.fbank_mean
+                stats_dict['fbank_std'] = self.fbank_mean
+                stats_dict['td_stats_means'] = self.td_stats_means
+                stats_dict['td_stats_stddevs'] = self.td_stats_stddevs
+                with open('models/eeg_statistics.pkl', 'wb') as f:
+                    pickle.dump(stats_dict, f)
+                    f.close()
             #
             else:
-                array = numpy.load('models/eeg_statistics.npy', allow_pickle = True)
-                self.fbank_mean = array[0]
-                self.fbank_std = array[1]
-                self.td_stats_means = array[2]
-                self.td_stats_stddevs = array[3]
+                with open('models/eeg_statistics.pkl', 'rb') as f:
+                    stats_dict = pickle.load(f)
+                    f.close()
+                    self.fbank_mean = stats_dict['fbank_mean']
+                    self.fbank_std = stats_dict['fbank_std']
+                    self.td_stats_means = stats_dict['td_stats_means']
+                    self.td_stats_stddevs = stats_dict['td_stats_stddevs']
         #
         self.num_samples = len(self.data) + len(self.data_class_1)
         if self.balance_classes and len(self.data_class_1) > 0:
@@ -283,7 +325,7 @@ class DataGenerator:
 
                 x = poly.fit_transform(x.T).T
 
-                X.append(numpy.expand_dims(x, axis = 0))
+                X.append(x)
                 Y.append(y)
                 T.append(t)
 
@@ -295,7 +337,7 @@ class DataGenerator:
 
                 x = poly.fit_transform(x.T).T
 
-                X.append(numpy.expand_dims(x, axis = 0))
+                X.append(x)
                 Y.append(y)
                 T.append(t)
         else:
@@ -304,14 +346,14 @@ class DataGenerator:
                 pos = (B * batch_index + b) % len(self.indexes)
 
                 x, y, t, i = self.data[self.indexes[pos]]
-                x = x[i]    # x was the reference to all the data from a full file
+                x = x[i]    # x was the reference to all the data from a whole file
 
                 if self.do_standard_scaling:
                     x = self.scale_data(x)
 
                 x = poly.fit_transform(x.T).T
 
-                X.append(numpy.expand_dims(x, axis = 0))
+                X.append(x)
                 Y.append(y)
                 T.append(t)
         #
@@ -355,7 +397,7 @@ if __name__ == '__main__':
     if index_filenames is None  or  len(index_filenames) == 0:
         raise Exception('Nothing can be done without data, my friend!')
 
-    dg = DataGenerator(index_filenames, in_training_mode=True, balance_classes = True)
+    dg = DataGenerator(index_filenames, in_training_mode=True, balance_classes = True, verbose = 2)
 
     print("loaded %d data samples" % dg.num_samples)
     print("available %d batches" % len(dg))
