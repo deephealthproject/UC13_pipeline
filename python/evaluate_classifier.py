@@ -8,8 +8,8 @@ from sklearn.metrics import classification_report, confusion_matrix
 from pyeddl import eddl
 from pyeddl.tensor import Tensor
 
-from data_utils_fbank import DataGenerator
-from models_01 import model_classifier_1a
+from data_utils_eeg import DataGenerator
+from models_01 import model_classifier_1a, model_classifier_2a
 
 
 if __name__ == '__main__':
@@ -33,16 +33,16 @@ if __name__ == '__main__':
         raise Exception('Nothing can be done without data, my friend!')
 
 
-    dg = DataGenerator(index_filenames, batch_size = batch_size, n_processes = 16, balance_classes = False)
+    dg = DataGenerator(index_filenames, batch_size = batch_size, verbose = 1)
 
     x, y, t = dg[0]
-    input_shape = x.shape[1:]
+    input_shape = (1,) + x.shape[1:]
     if model_id == '1a':
         net = model_classifier_1a(input_shape, num_classes = 2, filename = model_filename)
     #elif model_id == '1b':
     #    net = model_1a(input_shape, input_shape, filename = model_filename)
-    #elif model_id == '2':
-    #    net = model_2(input_shape, input_shape, filename = model_filename)
+    elif model_id == '2a':
+        net = model_classifier_2a(input_shape, num_classes = 2, filename = model_filename)
     else:
         raise Exception('You have to indicated a model id!')
 

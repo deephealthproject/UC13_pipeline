@@ -189,8 +189,8 @@ class DataGenerator:
                 #
                 self.fbank_mean = sum([m * c for m, c in zip(fbank_means, counts)])
                 self.fbank_std = sum([s * c for s, c in zip(fbank_stddevs, counts)])
-                self.fbank_mean /= 8 * sum(counts) # We use one mean and std for the 8 channels in frequency
-                self.fbank_std /= 8 * sum(counts)
+                self.fbank_mean /= sum(counts) # We use one mean and std for the 8 channels in frequency
+                self.fbank_std /= sum(counts)
                 
                 self.td_stats_means = []    # Lists with time domain statistics means and stdevs
                 self.td_stats_stddevs = []  # 0: mean, 1: std, 2: kurtosis, 3: skewness 4: Mobility 5: Complexity
@@ -205,38 +205,6 @@ class DataGenerator:
                     std /= sum(counts)
                     self.td_stats_means.append(mean)
                     self.td_stats_stddevs.append(std)
-
-                print("STATS")
-                print("fbank_mean values", self.fbank_mean)
-                print("fbank_std values", self.fbank_std)
-                print("td_stats_mean mean values", self.td_stats_means[0])
-                print("td_stats_mean std values", self.td_stats_stddevs[0])
-                print("td_stats_std mean values", self.td_stats_means[1])
-                print("td_stats_std std values", self.td_stats_stddevs[1])
-                print("td_stats_kurtosis mean values", self.td_stats_means[2])
-                print("td_stats_kurtosis std values", self.td_stats_stddevs[2])
-                print("td_stats_skew mean values", self.td_stats_means[3])
-                print("td_stats_skew std values", self.td_stats_stddevs[3])
-                print("td_stats_mob mean values", self.td_stats_means[4])
-                print("td_stats_mob std values", self.td_stats_stddevs[4])
-                print("td_stats_compl mean values", self.td_stats_means[5])
-                print("td_stats_compl std values", self.td_stats_stddevs[5])
-                print('\n\n MAX-MIN')
-
-                print("fbank_mean values(max, min): ", numpy.amax(self.fbank_mean), numpy.amin(self.fbank_mean))
-                print("fbank_mean values(max, min): ", numpy.amax(self.fbank_std), numpy.amin(self.fbank_std))
-                print("td_stats_mean mean values(max, min): ", numpy.amax(self.td_stats_means[0]), numpy.amin(self.td_stats_means[0]))
-                print("td_stats_mean std values(max, min): ", numpy.amax(self.td_stats_stddevs[0]), numpy.amin(self.td_stats_stddevs[0]))
-                print("td_stats_std mean values(max, min): ", numpy.amax(self.td_stats_means[1]), numpy.amin(self.td_stats_means[1]))
-                print("td_stats_std std values(max, min): ", numpy.amax(self.td_stats_stddevs[1]), numpy.amin(self.td_stats_stddevs[1]))
-                print("td_stats_kurtosis mean values(max, min): ", numpy.amax(self.td_stats_means[2]), numpy.amin(self.td_stats_means[2]))
-                print("td_stats_kurtosis std values(max, min): ", numpy.amax(self.td_stats_stddevs[2]), numpy.amin(self.td_stats_stddevs[2]))
-                print("td_stats_skew mean values(max, min): ", numpy.amax(self.td_stats_means[3]), numpy.amin(self.td_stats_means[3]))
-                print("td_stats_skew std values(max, min): ", numpy.amax(self.td_stats_stddevs[3]), numpy.amin(self.td_stats_stddevs[3]))
-                print("td_stats_mob mean values(max, min): ", numpy.amax(self.td_stats_means[4]), numpy.amin(self.td_stats_means[4]))
-                print("td_stats_mob std values(max, min): ", numpy.amax(self.td_stats_stddevs[4]), numpy.amin(self.td_stats_stddevs[4]))
-                print("td_stats_compl mean values(max, min): ", numpy.amax(self.td_stats_means[5]), numpy.amin(self.td_stats_means[5]))
-                print("td_stats_compl std values(max, min): ", numpy.amax(self.td_stats_stddevs[5]), numpy.amin(self.td_stats_stddevs[5]))
                 
                 stats_dict = {}
                 stats_dict['fbank_mean'] = self.fbank_mean
@@ -374,7 +342,7 @@ class DataGenerator:
 
         :return numpy.array X   An array with the scaled data.
         '''
-
+        X = numpy.array(X, dtype=numpy.float64)
         X[:,:8] = (X[:,:8] - self.fbank_mean) / self.fbank_std
         X[:,8] = (X[:,8] - self.td_stats_means[0]) / self.td_stats_stddevs[0]
         X[:,9] = (X[:,9] - self.td_stats_means[1]) / self.td_stats_stddevs[1]

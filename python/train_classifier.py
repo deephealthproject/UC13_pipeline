@@ -39,14 +39,13 @@ if __name__ == '__main__':
     dg = DataGenerator(index_filenames, 
                        batch_size = batch_size,
                        in_training_mode = True,
+                       balance_classes = True,
                        verbose = 1)
 
     x, y, t = dg[0]
     input_shape = (1,) + x.shape[1:]
     if model_id == '1a':
         net = model_classifier_1a(input_shape, num_classes = 2, filename = model_filename)
-    #elif model_id == '1b':
-    #    net = model_1a(input_shape, input_shape, filename = model_filename)
     elif model_id == '2a':
         net = model_classifier_2a(input_shape, num_classes = 2, filename = model_filename)
     else:
