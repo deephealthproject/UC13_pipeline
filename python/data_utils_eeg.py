@@ -286,19 +286,19 @@ class DataGenerator:
                 pos = (B * batch_index + b) % len(self.indexes)
 
                 x, y, t, i = self.data[self.indexes[pos]]
-                x = x[i]    # x was the reference to all the data from a full file
+                x = numpy.array(x[i], dtype=numpy.float64)    # x was the reference to all the data from a full file
 
                 if self.do_standard_scaling:
                     x = self.scale_data(x)
-
+                
                 x = poly.fit_transform(x.T).T
 
                 X.append(x)
                 Y.append(y)
                 T.append(t)
 
-                x, y, t, i = self.data_class_1[self.indexes_class_1[pos]]
-                x = x[i]    # x was the reference to all the data from a full file
+                x, y, t, i = self.data_class_1[self.indexes_class_1[pos]]   
+                x = numpy.array(x[i], dtype=numpy.float64)    # x was the reference to all the data from a full file
 
                 if self.do_standard_scaling:
                     x = self.scale_data(x)
@@ -314,7 +314,7 @@ class DataGenerator:
                 pos = (B * batch_index + b) % len(self.indexes)
 
                 x, y, t, i = self.data[self.indexes[pos]]
-                x = x[i]    # x was the reference to all the data from a whole file
+                x = numpy.array(x[i], dtype=numpy.float64) # x was the reference to all the data from a whole file
 
                 if self.do_standard_scaling:
                     x = self.scale_data(x)
@@ -342,7 +342,7 @@ class DataGenerator:
 
         :return numpy.array X   An array with the scaled data.
         '''
-        X = numpy.array(X, dtype=numpy.float64)
+
         X[:,:8] = (X[:,:8] - self.fbank_mean) / self.fbank_std
         X[:,8] = (X[:,8] - self.td_stats_means[0]) / self.td_stats_stddevs[0]
         X[:,9] = (X[:,9] - self.td_stats_means[1]) / self.td_stats_stddevs[1]

@@ -33,7 +33,10 @@ if __name__ == '__main__':
         raise Exception('Nothing can be done without data, my friend!')
 
 
-    dg = DataGenerator(index_filenames, batch_size = batch_size, verbose = 1)
+    dg = DataGenerator(index_filenames,
+                        batch_size = batch_size,
+                        balance_classes = False,
+                        verbose = 1)
 
     x, y, t = dg[0]
     input_shape = (1,) + x.shape[1:]
@@ -44,7 +47,7 @@ if __name__ == '__main__':
     elif model_id == '2a':
         net = model_classifier_2a(input_shape, num_classes = 2, filename = model_filename)
     else:
-        raise Exception('You have to indicated a model id!')
+        raise Exception('You have to indicate a model id!')
 
     Y_true = list()
     Y_pred = list()

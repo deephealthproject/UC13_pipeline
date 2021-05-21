@@ -6,16 +6,43 @@ import FilterBank as filter_bank
 import CepstralCoefficients as cc
 
 from matplotlib import pyplot
-
 import scipy
-
 from data_utils import load_file
+
+from pyeddl import eddl
+from pyeddl.tensor import Tensor
+from data_utils_eeg import DataGenerator
+from models_01 import model_classifier_1a, model_classifier_2a
 
 
 #filename = '../clean_signals/chb01/chb01_03.edf.pbz2'
-filename = '../clean_signals/chb01/chb01_19.edf.pbz2'
+#filename = '../clean_signals/chb01/chb03_01.edf.pbz2'
 
-data_pieces = load_file(filename,
+filename = '../clean_signals/chb03/chb03_01'
+model_id = '2a'
+model_filename = 'models/model_classifier_2a-19.eddl'
+
+with open('etc/index_view_eeg.txt', 'w') as f:
+    f.write(filename)
+    f.close()
+
+dg = DataGenerator(['etc/index_view_eeg.txt'], batch_size = 1799, verbose = 1)
+x, y, t = dg[0]
+input_shape = (1,) + x.shape[1:]
+if model_id == '1a':
+    net = model_classifier_1a(input_shape, num_classes = 2, filename = model_filename)
+elif model_id == '2a':
+    net = model_classifier_2a(input_shape, num_classes = 2, filename = model_filename)
+
+Y_pred = list()
+for j in range(len(dg)):
+    x, y_true, t = dg[j]
+    x = Tensor.fromarray(x)
+    (y_pred, ) = eddl.predict(net, [x])
+    y_pred = y_pred.getdata()
+    Y_pred = Y_pred + y_pred[:,1].tolist()
+
+data_pieces = load_file(filename + '.edf.pbz2',
                         exclude_seizures = False,
                         do_preemphasis = False,
                         separate_seizures = False,
@@ -31,7 +58,7 @@ print(len(signals), signals.shape)
 preprocessors = [preprocessor.Preprocessor( sampling_rate = 256, # in Hz
                                             subsampling_period = 2000, # in ms
                                             window_length = 4000, # in ms
-                                            fb_length = 20, # number of filters
+                                            #fb_length = 20, # number of filters
                                             use_mel_scale = False,
                                             use_eeg_filtering = False,
                                             max_freq_for_filters = 70)
@@ -89,7 +116,7 @@ for ch in range(n_channels):
                         #mode = 'surroundings_average')
     '''
 
-    fig, axes = pyplot.subplots(nrows = 3, ncols = 1, figsize = (9, 7))
+    fig, axes = pyplot.subplots(nrows = 4, ncols = 1, figsize = (9, 7))
     axis = axes[0]
     axis.grid()
     T = len(obj.data)
@@ -120,7 +147,7 @@ for ch in range(n_channels):
     #axis.pcolor(spectrogram.T)
     #axis.pcolor(sp_1.T)
     '''
-    axis.pcolor(fb.T)
+    axis.pcolor(fb.T, cmap='plasma')
     #
     axis = axes[2]
     axis.grid()
@@ -142,4 +169,12 @@ for ch in range(n_channels):
     axis.plot(time_axis_2, ed[-1][1], label = f's{i}')
     '''
     axis.legend()
+
+    axis = axes[3]
+    axis.grid()
+    axis.plot(range(len(Y_pred)), Y_pred, label='Class 1 probability')
+    axis.legend()
+
     pyplot.show()
+    #pyplot.savefig('eeg_view_chb1_19.png')
+    #break
