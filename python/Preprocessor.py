@@ -172,7 +172,7 @@ class MySignalStats:
             #dd_x = d_x[1:] - d_x[:-1]
             dd_x = self.time_derivative(d_x, [-3, -2, -1, 0, 1, 2, 3])
             d_mobility = math.sqrt(dd_x.var() / (1.0e-3 + d_x.var()))
-            complexity = d_mobility / mobility
+            complexity = d_mobility / (1.0e-3 + mobility)
 
             time_domain_statistics.append([mean, std, kurt, skew.data, mobility, complexity])
             #
@@ -199,7 +199,7 @@ class MySignalStats:
         return self.stats[:, 3]
 
     def get_mobility(self):
-        return self.stats[:,4]
+        return self.stats[:, 4]
 
     def get_complexity(self):
-        return self.stats[:,5]
+        return self.stats[:, 5]

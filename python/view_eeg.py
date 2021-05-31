@@ -1,3 +1,5 @@
+import os
+import sys
 import datetime
 import numpy
 
@@ -9,8 +11,6 @@ from matplotlib import pyplot
 import scipy
 from data_utils import load_file
 
-from pyeddl import eddl
-from pyeddl.tensor import Tensor
 from data_utils_eeg import DataGenerator
 from models_01 import model_classifier_1a, model_classifier_2a
 
@@ -18,7 +18,8 @@ from models_01 import model_classifier_1a, model_classifier_2a
 #filename = '../clean_signals/chb01/chb01_03.edf.pbz2'
 #filename = '../clean_signals/chb01/chb03_01.edf.pbz2'
 
-filename = '../clean_signals/chb03/chb03_01'
+#filename = '../clean_signals/chb03/chb03_01'
+filename = '../clean_signals/chb11/chb11_02'
 model_id = '2a'
 model_filename = 'models/model_classifier_2a-19.eddl'
 
@@ -26,21 +27,26 @@ with open('etc/index_view_eeg.txt', 'w') as f:
     f.write(filename)
     f.close()
 
-dg = DataGenerator(['etc/index_view_eeg.txt'], batch_size = 1799, verbose = 1)
-x, y, t = dg[0]
-input_shape = (1,) + x.shape[1:]
-if model_id == '1a':
-    net = model_classifier_1a(input_shape, num_classes = 2, filename = model_filename)
-elif model_id == '2a':
-    net = model_classifier_2a(input_shape, num_classes = 2, filename = model_filename)
+if os.path.exists(model_filename):
+    from pyeddl import eddl
+    from pyeddl.tensor import Tensor
+    dg = DataGenerator(['etc/index_view_eeg.txt'], batch_size = 1799, verbose = 1)
+    x, y, t = dg[0]
+    input_shape = (1,) + x.shape[1:]
+    if model_id == '1a':
+        net = model_classifier_1a(input_shape, num_classes = 2, filename = model_filename)
+    elif model_id == '2a':
+        net = model_classifier_2a(input_shape, num_classes = 2, filename = model_filename)
 
-Y_pred = list()
-for j in range(len(dg)):
-    x, y_true, t = dg[j]
-    x = Tensor.fromarray(x)
-    (y_pred, ) = eddl.predict(net, [x])
-    y_pred = y_pred.getdata()
-    Y_pred = Y_pred + y_pred[:,1].tolist()
+    Y_pred = list()
+    for j in range(len(dg)):
+        x, y_true, t = dg[j]
+        x = Tensor.fromarray(x)
+        (y_pred, ) = eddl.predict(net, [x])
+        y_pred = y_pred.getdata()
+        Y_pred = Y_pred + y_pred[:,1].tolist()
+else:
+    Y_pred = None
 
 data_pieces = load_file(filename + '.edf.pbz2',
                         exclude_seizures = False,
@@ -170,10 +176,11 @@ for ch in range(n_channels):
     '''
     axis.legend()
 
-    axis = axes[3]
-    axis.grid()
-    axis.plot(range(len(Y_pred)), Y_pred, label='Class 1 probability')
-    axis.legend()
+    if Y_pred is not None:
+        axis = axes[3]
+        axis.grid()
+        axis.plot(range(len(Y_pred)), Y_pred, label='Class 1 probability')
+        axis.legend()
 
     pyplot.show()
     #pyplot.savefig('eeg_view_chb1_19.png')

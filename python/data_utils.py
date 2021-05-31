@@ -20,7 +20,11 @@ def decompress_pickle(filename):
     :return: The contents of the file.
     '''
     f = bz2.BZ2File(filename, 'rb')
-    data = cPickle.load(f)
+    data = None
+    try:
+        data = cPickle.load(f)
+    except:
+        sys.stderr.write(f'error loading data from {filename}\n')
     f.close()
     return data
 
@@ -116,7 +120,8 @@ def load_files(filename_list,
     data_pieces = list()
     for l in pool_output:
         for d in l:
-            data_pieces.append(d)
+            if d is not None:
+                data_pieces.append(d)
 
     return data_pieces
 
@@ -156,6 +161,8 @@ def load_file(filename, exclude_seizures = False,
                 'applying a preemphasis filter:', do_preemphasis)
     #
     signal_dict = decompress_pickle(filename)
+    if signal_dict is None:
+        return None
     metadata = signal_dict.get('metadata')
     if verbose > 1:
         print(signal_dict.keys())
@@ -211,7 +218,17 @@ def load_file(filename, exclude_seizures = False,
         if label == 0 or not exclude_seizures:
             data_pieces.append((_signal, _label))
     else:
-        _signal = numpy.array([signal_dict[signal_id][:] for signal_id in signal_ids]).T
+        try:
+            _signal = numpy.array([signal_dict[signal_id][:] for signal_id in signal_ids]).T
+        except:
+            _signal = list()
+            for signal_id in signal_ids:
+                if signal_id in signal_dict.keys():
+                    _signal.append(signal_dict[signal_id][:])
+                else:
+                    sys.stderr.write(f'ERROR: signal id {signal_id} does not exist in {filename}\n')
+                    sys.stderr.flush()
+            _signal = numpy.array(_signal)
         data_pieces.append((_signal, 0))
     #
     return data_pieces

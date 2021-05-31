@@ -37,6 +37,8 @@ def process_file(input_filename):
                             do_preemphasis = False,
                             separate_seizures = False,
                             verbose = 0)
+    if data_pieces is None:
+        return '%18.6f %s  NOT PROCESSED DUE TO SOME ERRORS' % (time.time(), input_filename)
 
     signals = data_pieces[0][0]
     n_channels = min(signals.shape[1], 21) # warning: the limit to 21 channels is set manually

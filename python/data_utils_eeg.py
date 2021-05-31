@@ -37,6 +37,85 @@ def load_file(filename, verbose = 0):
     #
     return data_fbank, data_td_stats, labels, timestamps
 
+class SimpleDataGenerator:
+    '''
+        Class for fetching data and provide single samples..
+    '''
+
+    def __init__(self, index_filenames = None, verbose = 0):
+        '''
+
+            Constructor to create objects of the class **SimpleDataGenerator** that will load data as required.
+
+            Parameters
+            ----------
+
+            :param self:
+                Reference to the current object.
+
+            :param list index_filenames:
+                List of index filenames from which to load data filenames.
+
+            :param int verbose:
+                Level of verbosity.
+
+        '''
+        #
+        self.verbose = verbose
+        self.filenames = list()
+        for index_fname in index_filenames:
+            with open(index_fname, 'r') as f:
+                for line in f:
+                    l = line.strip()
+                    if l[0] != '#': 
+                        self.filenames.append(l)
+                f.close()
+        #
+        self.index_current_file = -1
+        self.index_current_sample = -1
+        self.fetch_next_file()
+
+    def __len__(self):
+        raise Exception('This objects cannot compute the total number of samples it will provide')
+
+    def fetch_next_file(self):
+        self.index_current_file += 1
+        if self.index_current_file < len(self.filenames):
+            data_fbank, data_td_stats, labels, timestamps = load_file(self.filenames[self.index_current_file], verbose = self.verbose)
+            self.X = numpy.concatenate((data_fbank, data_td_stats), axis=2)
+            #self.X = self.X.reshape(-1, self.X.shape[2])
+            self.labels = labels
+            self.timestamps = timestamps
+            if self.verbose > 0:
+                print(self.filenames[self.index_current_file], data_fbank.shape, data_td_stats.shape, self.X.shape, len(self.labels), len(self.timestamps))
+        else:
+            self.X = None
+        self.index_current_sample = -1
+        
+
+    def next(self):
+        self.index_current_sample += 1
+        if self.X is None  or  self.index_current_sample >= len(self.X):
+            self.fetch_next_file()
+            if self.X is None:
+                return None, None
+
+        return self.X[self.index_current_sample], self.labels[self.index_current_sample]
+
+    def next_block(self, n=10):
+        X = list()
+        L = list()
+        for i in range(n):
+            x, l = self.next()
+            if x is not None:
+                X.append(x)
+                L.append(l)
+        if len(X) > 0:
+            return X, L
+        else:
+            return None, None
+    # --------------------------------------------------------------------------------------------
+
 
 class DataGenerator:
     '''

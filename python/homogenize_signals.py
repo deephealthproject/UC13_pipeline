@@ -195,7 +195,12 @@ if __name__=='__main__':
                 if f.endswith('.edf'):
                     if not os.path.exists(clean_path + '/' + d):
                         os.makedirs(clean_path + '/' + d)
-                    params.append((signals_path + '/' + d + '/' + f, signal_reference, clean_path + '/' + d + '/' + f))
+                    # this prevents to overwrite existing EDF files, the data scientist must
+                    # remove the old ones before executing this Python code to regenerate EDF files.
+                    if not os.path.exists(clean_path + '/' + d + '/' + f + '.pbz2'):
+                        params.append((signals_path + '/' + d + '/' + f, signal_reference, clean_path + '/' + d + '/' + f))
+                    else:
+                        print(clean_path + '/' + d + '/' + f, 'already exists!')
             #
         #
     #
