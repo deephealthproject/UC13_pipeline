@@ -1,3 +1,5 @@
+import os
+import sys
 import math
 import numpy as np
 from scipy import signal, fftpack, constants, stats
@@ -152,10 +154,10 @@ class MySignalStats:
                      ENGINEERING, VOL. 27, NO. 11, NOVEMBER 2019
 
     """
-    def __init__(self, x, window_length = 256 * 4, subsampling_period = 256 * 2):
-        self.data = x
-        self.n_samples = len(x)
-        self.n_subsamples = (len(x) - subsampling_period) // subsampling_period
+    def __init__(self, data, window_length = 256 * 4, subsampling_period = 256 * 2):
+        self.data = data
+        self.n_samples = len(self.data)
+        self.n_subsamples = (len(self.data) - subsampling_period) // subsampling_period
         time_domain_statistics = list()
         i = window_length
         count = 0
@@ -165,12 +167,20 @@ class MySignalStats:
             std  = x.std()
             kurt = stats.kurtosis(x)
             skew = stats.mstats.skew(x)
+            print('--', i, sum(abs(x)))
+            if np.isnan(kurt):
+                #print('kurtosis is NaN', " ".join("{:e}".format(_) for _ in x))
+                print('kurtosis is NaN', i, sum(abs(x)))
+                sys.exit(1)
+            if np.isnan(skew.data):
+                #print('skewness is NaN', " ".join("{:e}".format(_) for _ in x))
+                print('kurtosis is NaN', i, sum(abs(x)))
+                sys.exit(1)
 
-            #d_x = x[1:] - x[:-1]
-            d_x = self.time_derivative(x, [-3, -2, -1, 0, 1, 2, 3])
-            mobility = math.sqrt(d_x.var() / (1.0e-3 + x.var()))
-            #dd_x = d_x[1:] - d_x[:-1]
+            d_x  = self.time_derivative(  x, [-3, -2, -1, 0, 1, 2, 3])
             dd_x = self.time_derivative(d_x, [-3, -2, -1, 0, 1, 2, 3])
+            #
+            mobility = math.sqrt(d_x.var() / (1.0e-3 + x.var()))
             d_mobility = math.sqrt(dd_x.var() / (1.0e-3 + d_x.var()))
             complexity = d_mobility / (1.0e-3 + mobility)
 

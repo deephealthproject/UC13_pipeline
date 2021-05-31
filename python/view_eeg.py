@@ -153,7 +153,7 @@ for ch in range(n_channels):
     #axis.pcolor(spectrogram.T)
     #axis.pcolor(sp_1.T)
     '''
-    axis.pcolor(fb.T, cmap='plasma')
+    axis.pcolor(fb.T, cmap='nipy_spectral')
     #
     axis = axes[2]
     axis.grid()

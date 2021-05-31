@@ -48,7 +48,7 @@ if __name__ == '__main__':
             X += [_ for _ in x]
 
         # do initialization
-        kmeans.original_k_means_init(dg.next_block(X))
+        kmeans.original_k_means_init(X)
 
         # sequentially process all the remaining samples
         chars = '|/-\\'
@@ -67,6 +67,7 @@ if __name__ == '__main__':
         kmeans = kmeans_load('models/kmeans.14')
 
     elif task == 'evaluate':
+        '''
         kmeans = kmeans_load('models/kmeans.14')
         i = 0
         for x in kmeans.cluster_centers_:
@@ -74,9 +75,9 @@ if __name__ == '__main__':
                 print('NaN')
             #print("%4d" % i, " ".join("{:10.6f}".format(_) for _ in x))
             i += 1
-
+        '''
         counter = 0
-        nan_counters = [0] * kmeans.cluster_centers_.shape[1]
+        nan_counters = [0] * 14 # kmeans.cluster_centers_.shape[1]
         while True:
             x, l = dg.next()
             if x is None: break

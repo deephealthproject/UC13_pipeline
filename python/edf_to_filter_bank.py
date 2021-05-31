@@ -65,6 +65,8 @@ def process_file(input_filename):
         preprocessors[ch].preemphasis_alpha = 0.50
         preemphasis, spectrogram, fb, fb_choi, mfcc = preprocessors[ch].preprocess_an_utterance(obj, verbose = 0)
 
+        print(input_filename, 'channel', ch)
+
         fbank.append(fb)
 
         mss = preprocessor.MySignalStats(preemphasis, window_length = 4 * 256, subsampling_period = 2 * 256) # 4 seconds window every 2 seconds
@@ -83,8 +85,14 @@ def process_file(input_filename):
     compress_to_pickle(output_filename, S)
     return '%18.6f %s' % (time.time(), input_filename)
 
+'''
 with mp.Pool(processes = mp.cpu_count()) as pool:
     pool_output = pool.map(process_file, edf_filenames)
 
 for s in pool_output:
     print(s)
+'''
+for filename in edf_filenames:
+    print(filename)
+    process_file(filename)
+    print('completed', flush = True)
