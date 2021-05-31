@@ -167,7 +167,6 @@ class MySignalStats:
             std  = x.std()
             kurt = stats.kurtosis(x)
             skew = stats.mstats.skew(x)
-            print('--', i, sum(abs(x)))
             if np.isnan(kurt):
                 #print('kurtosis is NaN', " ".join("{:e}".format(_) for _ in x))
                 print('kurtosis is NaN', i, sum(abs(x)))

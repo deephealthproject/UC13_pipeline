@@ -8,10 +8,13 @@ import Preprocessor as preprocessor
 
 from data_utils import load_file, compress_to_pickle
 
+'''
+TO BE REMOVED
 class MySignal:
     def __init__(self, x):
         self.data = x
         self.n_samples = len(x)
+'''
 
 '''
 an example to run this script:
@@ -55,7 +58,9 @@ def process_file(input_filename):
     fbank = list()
     time_domain_statistics = list()
     for ch in range(n_channels):
-        obj = MySignal(signals[:, ch])
+        #obj = MySignal(signals[:, ch])
+        mss = preprocessor.MySignalStats(signals[:, ch], window_length = 4 * 256, subsampling_period = 2 * 256) # 4 seconds window every 2 seconds
+        # mss = preprocessor.MySignalStats(preemphasis, window_length = 4 * 256, subsampling_period = 2 * 256) # 4 seconds window every 2 seconds
         #
         # a value of 0.95 for Preemphasis is used to pre-process audio signals in
         # speech recognizers, however, in the case of EEG we are interested in low
@@ -63,13 +68,12 @@ def process_file(input_filename):
         # helps to remove the DC component while keeping the energy at low frequencies
         #
         preprocessors[ch].preemphasis_alpha = 0.50
-        preemphasis, spectrogram, fb, fb_choi, mfcc = preprocessors[ch].preprocess_an_utterance(obj, verbose = 0)
+        preemphasis, spectrogram, fb, fb_choi, mfcc = preprocessors[ch].preprocess_an_utterance(mss, verbose = 0)
 
         print(input_filename, 'channel', ch)
 
         fbank.append(fb)
 
-        mss = preprocessor.MySignalStats(preemphasis, window_length = 4 * 256, subsampling_period = 2 * 256) # 4 seconds window every 2 seconds
         time_domain_statistics.append(mss.time_domain_statistics)
 
     X = numpy.zeros([len(fbank[0]), len(fbank), fbank[0].shape[1]])
@@ -86,6 +90,7 @@ def process_file(input_filename):
     return '%18.6f %s' % (time.time(), input_filename)
 
 '''
+'''
 with mp.Pool(processes = mp.cpu_count()) as pool:
     pool_output = pool.map(process_file, edf_filenames)
 
@@ -96,3 +101,4 @@ for filename in edf_filenames:
     print(filename)
     process_file(filename)
     print('completed', flush = True)
+'''
