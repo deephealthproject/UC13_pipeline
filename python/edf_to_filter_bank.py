@@ -70,7 +70,7 @@ def process_file(input_filename):
         preprocessors[ch].preemphasis_alpha = 0.50
         preemphasis, spectrogram, fb, fb_choi, mfcc = preprocessors[ch].preprocess_an_utterance(mss, verbose = 0)
 
-        print(input_filename, 'channel', ch)
+        #print(input_filename, 'channel', ch)
 
         fbank.append(fb)
 

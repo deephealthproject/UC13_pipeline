@@ -1,6 +1,6 @@
 #!/bin/bash
 
-find ../clean_signals/ -type f -name "*.fbank.pbz2" | egrep -v "chb11|chb17|chb18|chb20" | sed 's/\.fbank.pbz2//g' | sort >etc/index_all.txt
+find ../clean_signals/ -type f -name "*.fbank.pbz2" | egrep -v "chb17" | sed 's/\.fbank.pbz2//g' | sort >etc/index_all.txt
 
 
 for n in {1..24}
