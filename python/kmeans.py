@@ -24,7 +24,10 @@ if __name__ == '__main__':
         elif sys.argv[i] == '--task':
             task = sys.argv[i+1]
 
-    if task not in ['training', 'evaluate', 'compute-empirical-distribution']:
+    possible_tasks = ['training', 'evaluate', 'compute-empirical-distribution'] 
+    possible_tasks.append('training-lloyd')
+    possible_tasks.append('training-original-k-means')
+    if task not in possible_tasks:
         raise Exception(f'Unrecognized task {task}')
 
 
@@ -34,7 +37,7 @@ if __name__ == '__main__':
 
     dg = SimpleDataGenerator(index_filenames, verbose = 0)
 
-    if task == 'training':
+    if task.startswith('training'):
 
         if os.path.exists(models_filename):
             print()
@@ -42,30 +45,45 @@ if __name__ == '__main__':
             print()
             sys.exit(0)
 
-        kmeans = KMeans(n_clusters = 50, modality = 'original-k-Means')
+        if task == 'training' or task == 'training-lloyd':
 
-        # generate a list of samples that contains 'kmeans.n_clusters' samples a least
-        X = list()
-        while len(X) < kmeans.n_clusters:
-            x, l = dg.next()
-            if x is None or len(x) == 0: break
-            X += [_ for _ in x]
+            kmeans = KMeans(n_clusters = 50, modality = 'Lloyd', verbosity = 1, init = 'Katsavounidis', max_iter = 10000)
+            X = list()
+            while True:
+                x, l = dg.next()
+                if x is None or len(x) == 0: break
+                X.append(x)
+            X = numpy.vstack(X)
+            kmeans.fit(X)
 
-        # do initialization
-        kmeans.original_k_means_init(X)
+        elif task == 'training-original-k-means':
 
-        # sequentially process all the remaining samples
-        chars = '|/-\\'
-        i = 0
-        while True:
-            #X, L = dg.next_block()
-            x, l = dg.next()
-            if x is None or len(x) == 0: break
-            kmeans.original_k_means_iteration(x)
-            print(chars[i],  end = '\r', flush = True)
-            i = (i + 1) % 4
-        
+            kmeans = KMeans(n_clusters = 50, modality = 'original-k-Means')
+
+            # generate a list of samples that contains 'kmeans.n_clusters' samples a least
+            X = list()
+            while len(X) < kmeans.n_clusters:
+                x, l = dg.next()
+                if x is None or len(x) == 0: break
+                X += [_ for _ in x]
+
+            # do initialization
+            kmeans.original_k_means_init(X)
+
+            # sequentially process all the remaining samples
+            chars = '|/-\\'
+            i = 0
+            while True:
+                #X, L = dg.next_block()
+                x, l = dg.next()
+                if x is None or len(x) == 0: break
+                kmeans.original_k_means_iteration(x)
+                print(chars[i],  end = '\r', flush = True)
+                i = (i + 1) % 4
+        #
+            
         kmeans.save('models/kmeans.14')
+
 
     elif task == 'compute-empirical-distribution':
 
