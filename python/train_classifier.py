@@ -40,15 +40,15 @@ if __name__ == '__main__':
                        batch_size = batch_size,
                        do_shuffle = True,
                        in_training_mode = True,
-                       balance_classes = True,
+                       balance_classes = False,
                        verbose = 1)
 
     x, y, t = dg[0]
     input_shape = (1,) + x.shape[1:]
     if model_id == '1a':
-        net = model_classifier_1a(input_shape, num_classes = 2, filename = model_filename)
+        net = model_classifier_1a(input_shape, num_classes = 4, filename = model_filename)
     elif model_id == '2a':
-        net = model_classifier_2a(input_shape, num_classes = 2, filename = model_filename)
+        net = model_classifier_2a(input_shape, num_classes = 4, filename = model_filename)
     else:
         raise Exception('You have to indicate a model id!')
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     for epoch in range(starting_epoch, epochs):
         print()
-        print(f'epoch: {epoch+1} of {epochs}', 'num batches:', len(dg))
+        print(f'epoch: {epoch} of {epochs-1}', 'num batches:', len(dg))
         eddl.reset_loss(net)
         c0 = 0
         c1 = 0
@@ -66,20 +66,24 @@ if __name__ == '__main__':
             x = numpy.expand_dims(x, axis = 1)
             indices = list(range(len(x)))
             x = Tensor.fromarray(x)
-            c0 += len(y)
-            c1 += sum(y == 1)
-            _y_ = numpy.zeros([len(y), 2])
+            #_y_ = numpy.zeros([len(y), 2])
+            #_y_[y == 0, 0] = 1
+            #_y_[y == 1, 1] = 1
+            #y = Tensor.fromarray(_y_)
+            _y_ = numpy.zeros([len(y), 4])#, dtype=int)
             _y_[y == 0, 0] = 1
             _y_[y == 1, 1] = 1
+            _y_[y == 2, 2] = 1
+            _y_[y == 3, 3] = 1
+            _y_ = _y_.reshape((len(y), 1, 4))
             y = Tensor.fromarray(_y_)
             eddl.train_batch(net, [x], [y], indices = indices)
             eddl.print_loss(net, j)
-            print('%g \r' % (c1 / c0), end = '')
-            #j += 1
+            print('\r', end = '')
 
-        log_file.write("epoch %d   softmax_cross_entropy %g   categorical_accuracy %g\n" % (epoch+1, eddl.get_losses(net)[0], eddl.get_metrics(net)[0]))
+        log_file.write("epoch %d   softmax_cross_entropy %g   categorical_accuracy %g\n" % (epoch, eddl.get_losses(net)[0], eddl.get_metrics(net)[0]))
         log_file.flush()
         #eddl.save_net_to_onnx_file(net, f'models/model_classifier_{model_id}-{epoch}.onnx')
-        eddl.save(net, f'models/model_classifier_{model_id}-{epoch+1}.eddl')
+        eddl.save(net, f'models/model_classifier_{model_id}-{epoch}.eddl')
         dg.on_epoch_end()
     log_file.close()

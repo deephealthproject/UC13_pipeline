@@ -41,11 +41,11 @@ if __name__ == '__main__':
     x, y, t = dg[0]
     input_shape = (1,) + x.shape[1:]
     if model_id == '1a':
-        net = model_classifier_1a(input_shape, num_classes = 2, filename = model_filename)
+        net = model_classifier_1a(input_shape, num_classes = 4, filename = model_filename)
     #elif model_id == '1b':
     #    net = model_1a(input_shape, input_shape, filename = model_filename)
     elif model_id == '2a':
-        net = model_classifier_2a(input_shape, num_classes = 2, filename = model_filename)
+        net = model_classifier_2a(input_shape, num_classes = 4, filename = model_filename)
     else:
         raise Exception('You have to indicate a model id!')
 
@@ -61,11 +61,14 @@ if __name__ == '__main__':
 
     y_true = numpy.hstack(Y_true) * 1.0
     y_pred = numpy.hstack(Y_pred) * 1.0
-    print('sum(y_true) = ', sum(y_true))
-    print('sum(y_pred) = ', sum(y_pred))
+    #print('sum(y_true) = ', sum(y_true))
+    #print('sum(y_pred) = ', sum(y_pred))
     print('accuracy  = ', sum(y_true == y_pred) / len(y_true))
     print('recall    = ', sum(numpy.logical_and(y_true, y_pred)) / (1.0e-6 + sum(y_true)))
     print('precision = ', sum(numpy.logical_and(y_true, y_pred)) / (1.0e-6 + sum(y_pred)))
     print(y_true.shape, y_pred.shape)
-    print(confusion_matrix(y_true, y_pred, labels = [0, 1]))
-    print(classification_report(y_true, y_pred, target_names = ['normal', 'ictal']))
+    #print(confusion_matrix(y_true, y_pred, labels = [0, 1]))
+    #print(classification_report(y_true, y_pred, target_names = ['normal', 'ictal']))
+    print(confusion_matrix(y_true, y_pred, labels = [0, 1, 2, 3]))
+    print(classification_report(y_true, y_pred, target_names = ['inter-ictal', 'ictal', 'pre-ictal', 'post-ictal'])) 
+

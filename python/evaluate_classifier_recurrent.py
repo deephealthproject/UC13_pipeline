@@ -9,7 +9,7 @@ from pyeddl import eddl
 from pyeddl.tensor import Tensor
 
 from data_utils_eeg import SequenceDataGenerator
-from models_01 import model_classifier_3a
+from models_01 import model_classifier_3a, model_classifier_3b
 
 
 if __name__ == '__main__':
@@ -46,6 +46,8 @@ if __name__ == '__main__':
     input_shape = x.shape[2:]
     if model_id == '3a':
         net = model_classifier_3a(input_shape, num_classes = 4, filename = model_filename)
+    elif model_id == '3b':
+        net = model_classifier_3b(input_shape, num_classes = 4, filename = model_filename)
     else:
         raise Exception('You have to indicate a model id!')
 
@@ -73,8 +75,8 @@ if __name__ == '__main__':
 
     y_true = numpy.hstack(Y_true) * 1.0
     y_pred = numpy.hstack(Y_pred) * 1.0
-    print('sum(y_true) = ', sum(y_true))
-    print('sum(y_pred) = ', sum(y_pred))
+    #print('sum(y_true) = ', sum(y_true))
+    #print('sum(y_pred) = ', sum(y_pred))
     print('accuracy  = ', sum(y_true == y_pred) / len(y_true))
     print('recall    = ', sum(numpy.logical_and(y_true, y_pred)) / (1.0e-6 + sum(y_true)))
     print('precision = ', sum(numpy.logical_and(y_true, y_pred)) / (1.0e-6 + sum(y_pred)))

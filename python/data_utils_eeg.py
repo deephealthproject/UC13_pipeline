@@ -523,9 +523,11 @@ class SequenceDataGenerator:
                 # Generate indexes of the current file
                 indexes = numpy.arange(self.sequence_length - 1, len(x), 1)
                 
-                for c in range(x.shape[1]):
-                    for t in indexes:
-                        self.indexes.append((findex, t, c, labels[t], timestamp[t]))
+                #for c in range(x.shape[1]):
+                #    for t in indexes:
+                #        self.indexes.append((findex, t, c, labels[t], timestamp[t]))
+                for t in indexes:
+                        self.indexes.append((findex, t, labels[t], timestamp[t]))
                 #
 
                 if self.input_shape is None:
@@ -633,7 +635,7 @@ class SequenceDataGenerator:
         #
 
         print("Data Generator created!")
-        print("Shape of the data: ", (self.batch_size,) + self.input_shape)
+        print("Shape of the data: ", (self.batch_size,) + (self.sequence_length,) + self.input_shape)
 
         self.on_epoch_end()
 
@@ -685,14 +687,16 @@ class SequenceDataGenerator:
         for b in range(B):
             pos = (B * batch_index + b) % len(self.indexes)
 
-            findex, t, c, label, timestamp = self.indexes[pos]
-            x = self.files[findex][t - self.sequence_length + 1 : t + 1, c].copy()
+            #findex, t, c, label, timestamp = self.indexes[pos]
+            #x = self.files[findex][t - self.sequence_length + 1 : t + 1, c].copy()
+            findex, t, label, timestamp = self.indexes[pos]
+            x = self.files[findex][t - self.sequence_length + 1 : t + 1, :].copy()
             #
 
             if self.do_standard_scaling:
                 x = self.scale_data(x)
             
-            X.append(x)
+            X.append(x.reshape((self.sequence_length, 21 * 14)))
             Y.append(label) # The label of the sequence will be the label of the last sample
             T.append(timestamp) # The timestamp of the sequence will be the one of the last sample
         #
@@ -732,7 +736,7 @@ class SequenceDataGenerator:
         #
 
         return X
-        
+
 
 if __name__ == '__main__':
     #
@@ -746,9 +750,8 @@ if __name__ == '__main__':
         raise Exception('Nothing can be done without data, my friend!')
 
     #dg = DataGenerator(index_filenames, in_training_mode = True, balance_classes = True, verbose = 2)
-    #dg = SequenceDataGenerator(index_filenames, in_training_mode=True, verbose = 2)
-    dg = PairDataGenerator(index_filenames, in_training_mode = True, do_standard_scaling = True, verbose = 2)
-
+    dg = SequenceDataGenerator(index_filenames, in_training_mode=True, verbose = 2)
+    
     print("available %d batches" % len(dg))
 
     counter = 0
@@ -756,8 +759,7 @@ if __name__ == '__main__':
 
     print(len(dg))
     for i in range(len(dg)):
-        #x, y, t = dg[i]
-        x, y = dg[i]
+        x, y, t = dg[i]
         #print(x.shape, y.shape) #, t.shape)
         counter += 1
         samples += len(x)
