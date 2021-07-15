@@ -452,6 +452,7 @@ class SequenceDataGenerator:
                         do_shuffle = False,
                         do_standard_scaling = True,
                         in_training_mode = False,
+                        balance_classes = False,
                         verbose = 0):
         '''
 
@@ -495,6 +496,7 @@ class SequenceDataGenerator:
         self.do_shuffle = do_shuffle
         self.do_standard_scaling = do_standard_scaling
         self.in_training_mode = in_training_mode
+        self.balance_classes = balance_classes
         #
         self.num_batches = 0
         self.num_signal_vectors = 0
@@ -508,13 +510,15 @@ class SequenceDataGenerator:
         #
 
         self.files = list()
-        self.indexes = list()
+        self.indexes = list()  # (findex, t, labels[t], timestamp[t])
+        self.indexes_classes_123 = list() # List for indexes of classes Preictal, Ictal and Postictal: 1,2,3
         self.input_shape = None
 
         for fname in self.filenames:
             ignore_this_file = False
             if fname[0] != '#':
                 x_fbank, x_stats, labels, timestamp = load_file(fname, verbose = verbose)
+                #print(x_fbank.shape, x_stats.shape, labels.shape, timestamp.shape)
                 #(1799,21,8), (1799,21,6), (1799,), (1799,)
                 x = numpy.concatenate((x_fbank, x_stats), axis=2)
                 findex = len(self.files)
@@ -526,7 +530,14 @@ class SequenceDataGenerator:
                 #for c in range(x.shape[1]):
                 #    for t in indexes:
                 #        self.indexes.append((findex, t, c, labels[t], timestamp[t]))
-                for t in indexes:
+                if self.balance_classes:
+                    for t in indexes:
+                            if labels[t] == 0:
+                                self.indexes.append((findex, t, labels[t], timestamp[t]))
+                            else:
+                                self.indexes_classes_123.append((findex, t, labels[t], timestamp[t]))
+                else:
+                    for t in indexes:
                         self.indexes.append((findex, t, labels[t], timestamp[t]))
                 #
 
@@ -659,13 +670,16 @@ class SequenceDataGenerator:
 
         :param self: Reference to the current object.
         '''
-
-        self.num_batches = len(self.indexes) // self.batch_size
-        if (len(self.indexes) % self.batch_size) != 0:
+        n_samples = len(self.indexes) + len(self.indexes_classes_123)
+        self.num_batches = n_samples // self.batch_size
+        if (n_samples % self.batch_size) != 0:
             self.num_batches += 1
 
         if self.do_shuffle:
             shuffle(self.indexes)
+            if self.indexes_classes_123 is not None:
+                shuffle(self.indexes_classes_123)
+                
 
 
     def __getitem__(self, batch_index : int):
@@ -683,22 +697,53 @@ class SequenceDataGenerator:
         Y = list()
         T = list()
         
-        B = self.batch_size
-        for b in range(B):
-            pos = (B * batch_index + b) % len(self.indexes)
+        
+        if self.balance_classes:
+            B = self.batch_size // 2
+            for b in range(B):
+                # Class 0 (interictal)
+                pos = (B * batch_index + b) % len(self.indexes)
+                findex, t, label, timestamp = self.indexes[pos]
+                x = self.files[findex][t - self.sequence_length + 1 : t + 1, :].copy()
+                #
 
-            #findex, t, c, label, timestamp = self.indexes[pos]
-            #x = self.files[findex][t - self.sequence_length + 1 : t + 1, c].copy()
-            findex, t, label, timestamp = self.indexes[pos]
-            x = self.files[findex][t - self.sequence_length + 1 : t + 1, :].copy()
-            #
+                if self.do_standard_scaling:
+                    x = self.scale_data(x)
+                
+                X.append(x.reshape((self.sequence_length, 21 * 14)))
+                Y.append(label) # The label of the sequence will be the label of the last sample
+                T.append(timestamp) # The timestamp of the sequence will be the one of the last sample
 
-            if self.do_standard_scaling:
-                x = self.scale_data(x)
-            
-            X.append(x.reshape((self.sequence_length, 21 * 14)))
-            Y.append(label) # The label of the sequence will be the label of the last sample
-            T.append(timestamp) # The timestamp of the sequence will be the one of the last sample
+                # Classes 1, 2, 3
+                pos = (B * batch_index + b) % len(self.indexes_classes_123)
+                findex, t, label, timestamp = self.indexes_classes_123[pos]
+                x = self.files[findex][t - self.sequence_length + 1 : t + 1, :].copy()
+                #
+
+                if self.do_standard_scaling:
+                    x = self.scale_data(x)
+                
+                X.append(x.reshape((self.sequence_length, 21 * 14)))
+                Y.append(label) # The label of the sequence will be the label of the last sample
+                T.append(timestamp) # The timestamp of the sequence will be the one of the last sample
+        #
+        else:
+            B = self.batch_size
+            for b in range(B):
+                pos = (B * batch_index + b) % len(self.indexes)
+
+                #findex, t, c, label, timestamp = self.indexes[pos]
+                #x = self.files[findex][t - self.sequence_length + 1 : t + 1, c].copy()
+                findex, t, label, timestamp = self.indexes[pos]
+                x = self.files[findex][t - self.sequence_length + 1 : t + 1, :].copy()
+                #
+
+                if self.do_standard_scaling:
+                    x = self.scale_data(x)
+                
+                X.append(x.reshape((self.sequence_length, 21 * 14)))
+                Y.append(label) # The label of the sequence will be the label of the last sample
+                T.append(timestamp) # The timestamp of the sequence will be the one of the last sample
         #
 
         X = numpy.array(X)
@@ -736,7 +781,7 @@ class SequenceDataGenerator:
         #
 
         return X
-
+        
 
 if __name__ == '__main__':
     #
@@ -750,7 +795,7 @@ if __name__ == '__main__':
         raise Exception('Nothing can be done without data, my friend!')
 
     #dg = DataGenerator(index_filenames, in_training_mode = True, balance_classes = True, verbose = 2)
-    dg = SequenceDataGenerator(index_filenames, in_training_mode=True, verbose = 2)
+    dg = SequenceDataGenerator(index_filenames, in_training_mode=True, balance_classes = True, verbose = 2)
     
     print("available %d batches" % len(dg))
 

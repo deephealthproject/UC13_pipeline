@@ -4,6 +4,7 @@ import bz2
 import pickle
 import _pickle as cPickle
 import numpy
+from tqdm import tqdm
 
 from random import shuffle
 
@@ -417,14 +418,413 @@ class DataGenerator:
         return (X, Y)
 
 
+class RawDataGenerator:
+    '''
+        Class for preloading data and provide batches.
+    '''
+
+    def __init__(self, index_filenames, batch_size = 20, window_length = 256 * 4, shift = 256 * 2,
+                 min_interictal_length = 256 * 3600 * 4, # Select interictal samples with at least 4h of interictal period
+                 preictal_length = 256 * 3600, # 1 hour before the seizure
+                 do_shuffle = False,
+                 do_standard_scaling = True,
+                 do_preemphasis = False,
+                 exclude_seizures = False,
+                 mode = None,
+                 patient_id = 'no_patient_id', load_stats = False,
+                 debug_mode = False):
+        '''
+
+            Constructor to create objects of the class **DataGenerator** and loads all the data.
+            Future implementations will pave the way to load data from files on-the-fly in order to allow work
+            with large enough datasets.
+
+            Parameters
+            ----------
+
+            :param self:
+                Reference to the current object.
+
+            :param list index_filenames:
+                List of index filenames from which to load data filenames.
+
+            :param int batch_size:
+                Number of samples per batch.
+
+            :param int window_length:
+                Size in vectors of channels in the signal to compose a
+                single sample.
+
+            :param int shift:
+                Number of vectors of channels from the signal to shift from
+                one sample to the next one in the sequence.
+
+            :param int min_interictal_length:
+                Minimum number of vectors of channels in a period to consider
+                the period as interictal.
+
+            :param int preictal_length:
+                Length of the preictal period in number of vectors.
+
+            :param boolean do_shuffle:
+                Flag to indicate whether to shuffle data between epochs.
+
+            :param boolean do_standard_scaling:
+                Flag to indicate whether to scale each channel to zero
+                mean and unit variance.
+
+            :param boolean do_preemphasis:
+                Flag to indicate whether to apply a preemphasis FIR filter
+                to each signal/channel.
+
+            :param boolean exclude_seizures:
+                Flag to indicate whether to exclude the records with seizures.
+
+            :param string mode:
+                String to indicate the current mode of the process: "train", "val", "test".
+            
+            :param string patient_id:
+                String to indicate the patient id. It is used to save the statistics file.
+
+            :param bool load_stats:
+                Flag to indicate whether to load statistics from a file.
+
+            :param bool debug_mode:
+                Flag to indicate whether to activate debug mode.
+
+        '''
+        #
+        self.batch_size = batch_size
+        self.window_length = window_length
+        self.shift = shift
+        self.do_shuffle = do_shuffle
+        self.do_standard_scaling = do_standard_scaling
+        self.do_preemphasis = do_preemphasis
+        self.exclude_seizures = exclude_seizures
+        self.mode = mode
+        self.min_interictal_length = min_interictal_length
+        self.preictal_length = preictal_length
+        self.patient_id = patient_id
+        self.load_stats = load_stats
+        self.debug_mode = debug_mode
+        #
+        self.input_shape = None
+        self.training_batches = 0
+        self.validation_batches = 0
+        self.num_training_samples = 0
+        self.num_test_samples = 0
+        self.num_validation_samples = 0
+        self.num_signal_vectors = 0
+        #
+        self.train_indices = list()
+        self.validation_indices = list()
+        self.test_indices = list()
+        self.current_fold = -1
+        #
+        self.filenames = list()
+        for fname in index_filenames:
+            with open(fname, 'r') as f:
+                for l in f:
+                    if l[0] != '#':
+                        self.filenames.append(l.strip() + '.edf.pbz2')
+                f.close()
+        #
+        self.interictal_data = list()
+        self.preictal_data = list()
+        self.train_data = list()
+        #self.validation_data = list()
+        self.test_data = list()
+        #
+
+        interictal = list()
+        _input_shape = None
+        print("Loading EDF signals...")
+        for fname in tqdm(self.filenames):
+            d_p = load_file(fname, exclude_seizures = False,
+                        do_preemphasis = False,
+                        separate_seizures = True,
+                        verbose = 0)
+
+            for p, label in d_p:
+
+                if label == 0:
+                    for x in p:
+                        interictal.append(numpy.array(x, dtype=numpy.float64))
+                        if self.input_shape is None:
+                            self.input_shape = (self.window_length,) + x.shape
+                #
+                elif label == 1:
+                    if len(interictal) > (256 * 3600 // 2):
+                        # More than half an hour from the previous seizure, consider them as separated seizures
+                        preictal_len = min(self.preictal_length, len(interictal))
+                        preictal = interictal[(len(interictal) - preictal_len):]
+                        self.preictal_data.append(numpy.array(preictal, dtype=numpy.float64))
+                        self.num_signal_vectors += len(preictal)
+
+                        if (len(interictal) - preictal_len) >= self.min_interictal_length:
+                            # Enough interictal data, store it
+                            interictal = interictal[:(len(interictal) - preictal_len)]
+                            self.interictal_data.append(numpy.array(interictal, dtype=numpy.float64))
+                            self.num_signal_vectors += len(interictal)
+                    #   
+                    interictal = list() # Reset interictal
+                #
+            #
+            if len(interictal) >= self.min_interictal_length:
+                self.interictal_data.append(numpy.array(interictal, dtype=numpy.float64))
+        #       
+        
+        self.num_seizures = len(self.preictal_data)
+        print("Signals loaded!")
+        print("Number of seizures available:", self.num_seizures)
+        if self.num_seizures < 3:
+            raise Exception('Not enough seizures, please try other parameters or patients.')
+
+        self.interictal_data = numpy.vstack(self.interictal_data)
+
+        self.next_fold()
+        #
+        self.mean = numpy.zeros(self.input_shape[-1])
+        self.std  = numpy.ones(self.input_shape[-1])
+        #
+        if self.do_standard_scaling:
+            print("Scaling data...")
+            if self.mode == 'train' and self.load_stats:
+                means = []
+                counts = []
+                stddevs = []
+                for p in tqdm(self.interictal_data):
+                    means.append(p.mean(axis = 0))
+                    counts.append(len(p))
+                    stddevs.append(p.std(axis = 0))
+                
+                for seizure in tqdm(self.preictal_data):
+                    for p in seizure:
+                        means.append(p.mean(axis = 0))
+                        counts.append(len(p))
+                        stddevs.append(p.std(axis = 0))
+
+                self.mean = sum([m * c for m, c in zip(means, counts)])
+                self.std  = sum([s * c for s, c in zip(stddevs, counts)])
+                self.mean /= sum(counts)
+                self.std  /= sum(counts)
+
+                #
+                array = numpy.array([self.mean, self.std])
+                numpy.save('models/statistics_raw_' + self.patient_id + '.npy', array)
+                del array
+                del means
+                del counts
+                del stddevs
+            else:
+                array = numpy.load('models/statistics_raw_' + self.patient_id + '.npy')
+                self.mean = array[0]
+                self.std = array[1]
+        #
+        self.on_epoch_end()
+
+    def __len__(self):
+        '''
+        Returns the number of batches available in the current object.
+
+        :param self: Reference to the current object.
+
+        :return: The number of batches available in the current object.
+        '''
+        if self.mode == 'train':
+            return self.training_batches
+        elif self.mode == 'val':
+            return self.validation_batches
+        elif self.mode == 'test':
+            return self.test_batches
+
+    def on_epoch_end(self):
+        '''
+        Performs the predefined actions after an epoch is complete.
+        Currently only shuffles data if such option was enabled in the constructor.
+
+        :param self: Reference to the current object.
+        '''
+        #
+        self.training_batches = self.num_training_samples // self.batch_size
+        #if (self.num_training_samples % self.batch_size) != 0:
+        #    self.training_batches += 1
+        #
+        self.validation_batches = self.num_validation_samples // self.batch_size
+        #if (self.num_validation_samples % self.batch_size) != 0:
+        #    self.validation_batches += 1
+        #
+        self.test_batches = self.num_test_samples // self.batch_size
+        #if (self.num_test_samples % self.batch_size) != 0:
+        #    self.test_batches += 1
+        #
+
+        if self.do_shuffle:
+            shuffle(self.train_indices)
+        #
+
+    def __getitem__(self, batch_index : int):
+        '''
+        Returns the batch of samples specified by the index.
+
+        :param self: Reference to the current object.
+
+        :param int batch_index: Index of the batch to retrieve.
+
+        :return: A tuple with two objects, a batch of samples and the corresponding labels.
+        '''
+        #
+        X = list()
+        Y = list()
+        #
+        for sample in range(self.batch_size):
+            if self.mode == 'train':
+                index, label = self.train_indices[batch_index * self.batch_size + sample]
+                X.append(numpy.array(self.train_data[index : index + self.window_length], dtype=numpy.float64))
+
+            elif self.mode == 'test':
+                index, label = self.test_indices[batch_index * self.batch_size + sample]
+                X.append(self.test_data[index : index + self.window_length])
+            #
+            Y.append(label)
+        #
+        X = numpy.array(X)
+        Y = numpy.array(Y)
+        #
+        if self.do_standard_scaling:
+            for i in range(len(X)):
+                X[i] = (X[i] - self.mean) / self.std
+        #
+        if X.min() < -50. or X.max() > 50.:
+            if self.debug_mode:
+                print("#  ", file = sys.stderr)
+                print("#  WARNING: too large values after scaling while getting batch %d" % batch_index, file = sys.stderr)
+                print("#  min value = %g" % X.min(), file = sys.stderr)
+                print("#  max value = %g" % X.max(), file = sys.stderr)
+            #
+            X = numpy.minimum(X,  50.)
+            X = numpy.maximum(X, -50.)
+            if self.debug_mode:
+                print("#  values of all the samples in this batch clipped, current limits are [%f, %f]" % (X.min(), X.max()), file = sys.stderr)
+                print("#  ", file = sys.stderr)
+        #
+        return (X, Y)
+
+    def next_fold(self):
+        """
+        Generates the next fold of training-validation-test sets.
+        
+        :param self: Reference to the current object.
+
+        :return None
+        """
+        self.current_fold += 1
+        if self.current_fold == self.num_seizures:
+            raise Exception('No more folds available.')
+
+        print('Generating fold %d of %d' % ((self.current_fold + 1), self.num_seizures))
+
+
+        # Generate indices for training-test splits of current fold
+        interictal_block_size = len(self.interictal_data) // self.num_seizures
+        interictal_indices = [i for i in range(len(self.interictal_data))]
+        idx = self.current_fold * interictal_block_size
+
+        train_interictal_indices = list()
+        train_preictal_indices = list()
+        test_interictal_indices = list()
+        test_preictal_indices = list()
+
+        if self.current_fold == self.num_seizures - 1:
+            test_interictal_indices = interictal_indices[idx:] # Last block of the fold may have more samples
+            train_interictal_indices = interictal_indices[:idx]
+        else:
+            test_interictal_indices = interictal_indices[idx:(idx + interictal_block_size)]
+            train_interictal_indices = interictal_indices[:idx] + interictal_indices[(idx + interictal_block_size):]
+
+        for i in range(self.num_seizures):
+            if i == self.current_fold:
+                test_preictal_indices.append(i)
+            else:
+                train_preictal_indices.append(i)
+        #
+        self.train_data = list()
+        for i in train_interictal_indices:
+            self.train_data.append(self.interictal_data[i])
+        first_train_preictal = len(self.train_data)
+        for i in train_preictal_indices:
+            for sample in self.preictal_data[i]:
+                self.train_data.append(sample)
+
+        self.test_data = list()
+        for i in test_interictal_indices:
+            self.test_data.append(self.interictal_data[i])
+        first_test_preictal = len(self.test_data)
+        for i in test_preictal_indices:
+            for sample in self.preictal_data[i]:
+                self.test_data.append(sample)
+        #
+
+        self.train_indices = list()
+        #self.val_indices = list()
+        self.test_indices = list()
+
+        #######################################################################
+        # Generate train indices
+        interictal_train_samples = 0
+        for i in numpy.arange(0, first_train_preictal - self.window_length, step = self.shift):
+            self.train_indices.append((i, 0))
+            interictal_train_samples += 1
+        
+        # Oversampling on preictal samples
+        preictal_train_samples = 0
+        for i in numpy.arange(first_train_preictal, len(self.train_data) - self.window_length, step = self.shift // 5):
+            self.train_indices.append((i, 1))
+            preictal_train_samples += 1
+        #######################################################################
+        
+        #######################################################################
+        # Generate test indices
+        interictal_test_samples = 0
+        for i in numpy.arange(0, first_test_preictal - self.window_length, step = self.shift):
+            self.test_indices.append((i, 0))
+            interictal_test_samples += 1
+        
+        # NOT oversampling on TEST
+        preictal_test_samples = 0
+        for i in numpy.arange(first_test_preictal, len(self.test_data) - self.window_length, step = self.shift):
+            self.test_indices.append((i, 1))
+            preictal_test_samples += 1
+        #######################################################################
+
+        self.num_training_samples = interictal_train_samples + preictal_train_samples
+        self.num_test_samples = interictal_test_samples + preictal_test_samples
+
+        print("Fold generated")
+        print("Input shape: ", self.input_shape)
+        print("Training interictal samples: %d (%0.2f %%)" % (interictal_train_samples, 100.0 * interictal_train_samples / (interictal_train_samples + preictal_train_samples)))
+        print("Training preictal samples: %d (%0.2f %%)" % (preictal_train_samples, 100.0 * preictal_train_samples / (interictal_train_samples + preictal_train_samples)))
+        print("Test interictal samples: %d (%0.2f %%)" % (interictal_test_samples, 100.0 * interictal_test_samples / (interictal_test_samples + preictal_test_samples)))
+        print("Test preictal samples: %d (%0.2f %%)" % (preictal_test_samples, 100.0 * preictal_test_samples / (interictal_test_samples + preictal_test_samples)))
+
 
 if __name__ == '__main__':
 
-    dg = DataGenerator(['../clean_signals/chb01'], do_shuffle = True, n_processes = 16, do_preemphasis = True)
+    index_filenames = list()
+    #
+    for i in range(1, len(sys.argv)):
+        if sys.argv[i] == '--index':
+            index_filenames.append(sys.argv[i+1])
+    #
+    if index_filenames is None  or  len(index_filenames) == 0:
+        raise Exception('Nothing can be done without data, my friend!')
 
+    dg = RawDataGenerator(index_filenames, mode = 'train', window_length = 256 * 10, shift = 256 * 5, do_shuffle = True)
+    print(len(dg))
+    for i in range(len(dg)):
+        x, y = dg[i]
+        print(x.shape, y.shape, i, len(dg))
     print("loaded %d signal vectors" % dg.num_signal_vectors)
-    print("loaded %d data samples" % dg.num_samples)
     print("available %d batches" % len(dg))
 
-    for x, y in dg:
-        print(x.shape, y.shape)
+   

@@ -5,7 +5,7 @@ import numpy
 from pyeddl import eddl
 from pyeddl.tensor import Tensor
 
-def model_classifier_1a(input_shape, num_classes, filename = None):
+def model_classifier_1a(input_shape, num_classes, filename = None, gpus = [1]):
 
     if filename is None or filename.endswith('.eddl'):
 
@@ -15,14 +15,14 @@ def model_classifier_1a(input_shape, num_classes, filename = None):
         #
         #layer = eddl.GaussianNoise(layer, 0.25)
         do_pool = False
-        for num_filters in [16, 32]:
+        for num_filters in [32, 32, 64, 64, 64, 128, 128, 128]:
             if do_pool:
                 layer = eddl.MaxPool2D(layer, pool_size = [2, 1], strides = [2, 1])
             layer = eddl.ReLu(eddl.BatchNormalization(eddl.Conv2D(layer, num_filters, kernel_size = [3, 3], padding = 'same'), affine = True))
             #layer = eddl.ReLu(eddl.BatchNormalization(eddl.Conv2D(layer, num_filters, kernel_size = [3, 3], padding = 'same'), affine = True))
             do_pool = True
 
-        for num_filters in [64, 96]:
+        for num_filters in [256, 256]:
             if do_pool:
                 layer = eddl.MaxPool2D(layer, pool_size = [2, 2], strides = [2, 2])
             layer = eddl.ReLu(eddl.BatchNormalization(eddl.Conv2D(layer, num_filters, kernel_size = [3, 3], padding = 'same'), affine = True))
@@ -55,8 +55,8 @@ def model_classifier_1a(input_shape, num_classes, filename = None):
             net,
             o = eddl.sgd(lr = 1.e-3, momentum = 0.9),
             lo = ['softmax_cross_entropy'],
-            me = ['accuracy'], # ['categorical_accuracy'],
-            cs = eddl.CS_GPU(g = [1], mem = 'full_mem'),
+            me = ['categorical_accuracy'], # ['categorical_accuracy'],
+            cs = eddl.CS_GPU(g = gpus, mem = 'full_mem'),
             #cs = eddl.CS_CPU(),
             init_weights = initialize
             )
@@ -69,7 +69,7 @@ def model_classifier_1a(input_shape, num_classes, filename = None):
     return net
 
 
-def model_classifier_2a(input_shape, num_classes, filename = None):
+def model_classifier_2a(input_shape, num_classes, filename = None, gpus = [1]):
 
     if filename is None or filename.endswith('.eddl'):
 
@@ -101,7 +101,7 @@ def model_classifier_2a(input_shape, num_classes, filename = None):
             o = eddl.sgd(lr = 1.e-5, momentum = 0.9),
             lo = ['softmax_cross_entropy'],
             me = ['accuracy'], # ['categorical_accuracy'],
-            cs = eddl.CS_GPU(g = [1], mem = 'full_mem'),
+            cs = eddl.CS_GPU(g = gpus, mem = 'full_mem'),
             #cs = eddl.CS_CPU(),
             init_weights = initialize
             )
@@ -114,7 +114,7 @@ def model_classifier_2a(input_shape, num_classes, filename = None):
     return net
 
 
-def model_classifier_3a(input_shape, num_classes, filename = None):
+def model_classifier_3a(input_shape, num_classes, filename = None, gpus = [1]):
 
     if filename is not None and filename.endswith('.onnx'):
 
@@ -127,11 +127,14 @@ def model_classifier_3a(input_shape, num_classes, filename = None):
 
         layer = in_
         #
-        #layer = eddl.Dense(layer, 32)
+        layer = eddl.Dense(layer, 256)
         layer = eddl.ReLu(eddl.LSTM(layer, 512))
-        #layer = eddl.ReLu(eddl.GRU(layer, 64))
+        #layer = eddl.ReLu(eddl.LSTM(layer, 128))
+        #layer = eddl.ReLu(eddl.LSTM(layer, 128))
+        #layer = eddl.ReLu(eddl.GRU(layer, 512))
         layer = eddl.Flatten(layer)
         layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer,  512), affine = True))
+        layer = eddl.Dropout(layer, 0.4)
         layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer,  256), affine = True))
         #layer = eddl.Softmax(eddl.Dense(layer, num_classes))
         layer = eddl.Sigmoid(eddl.Dense(layer, num_classes))
@@ -143,11 +146,12 @@ def model_classifier_3a(input_shape, num_classes, filename = None):
 
     eddl.build(
             net,
-            o = eddl.sgd(lr = 1.e-4, momentum = 0.9),
+            #o = eddl.sgd(lr = 1.e-4, momentum = 0.9),
+            o = eddl.adam(lr = 1.0e-4),
             #lo = ['softmax_cross_entropy'],
             lo = ['cross_entropy'],
             me = ['categorical_accuracy'], # ['categorical_accuracy'],
-            cs = eddl.CS_GPU(g = [0, 1], mem = 'full_mem'),
+            cs = eddl.CS_GPU(g = gpus, mem = 'full_mem'),
             #cs = eddl.CS_CPU(),
             init_weights = initialize
             )
@@ -160,7 +164,7 @@ def model_classifier_3a(input_shape, num_classes, filename = None):
     return net
 
 
-def model_classifier_3b(input_shape, num_classes, filename = None):
+def model_classifier_3b(input_shape, num_classes, filename = None, gpus = [1]):
 
     if filename is not None and filename.endswith('.onnx'):
 
@@ -198,7 +202,7 @@ def model_classifier_3b(input_shape, num_classes, filename = None):
             o = eddl.sgd(lr = 1.e-3, momentum = 0.9),
             lo = ['softmax_cross_entropy'],
             me = ['categorical_accuracy'], # ['categorical_accuracy'],
-            cs = eddl.CS_GPU(g = [0, 1], mem = 'full_mem'),
+            cs = eddl.CS_GPU(g = gpus, mem = 'full_mem'),
             #cs = eddl.CS_CPU(),
             init_weights = initialize
             )

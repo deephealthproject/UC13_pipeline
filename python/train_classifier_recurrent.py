@@ -7,6 +7,7 @@ from pyeddl.tensor import Tensor
 
 from data_utils_eeg import DataGenerator, SequenceDataGenerator
 from models_01 import model_classifier_1a, model_classifier_2a, model_classifier_3a, model_classifier_3b
+from sklearn.metrics import classification_report, confusion_matrix
 
 
 if __name__ == '__main__':
@@ -48,19 +49,20 @@ if __name__ == '__main__':
 
     dg = SequenceDataGenerator(index_filenames, 
                        batch_size = batch_size,
-                       sequence_length = 50,
+                       sequence_length = 4,
                        do_shuffle = True,
                        in_training_mode = True,
                        do_standard_scaling = True,
+                       balance_classes = True,
                        verbose = 1)
 
     dg_val = None
     if len(index_validation) != 0:
         dg_val = SequenceDataGenerator(index_validation,
                                         batch_size = batch_size,
-                                        sequence_length = 50,
-                                        do_shuffle = True,
-                                        in_training_mode = True,
+                                        sequence_length = 4,
+                                        do_shuffle = False,
+                                        in_training_mode = False,
                                         do_standard_scaling = True,
                                         verbose = 1)
 
@@ -68,9 +70,9 @@ if __name__ == '__main__':
     input_shape = x.shape[2:]
 
     if model_id == '3a':
-        net = model_classifier_3a(input_shape, num_classes = 4, filename = model_filename)
+        net = model_classifier_3a(input_shape, num_classes = 4, filename = model_filename, gpus = gpu)
     elif model_id == '3b':
-        net = model_classifier_3b(input_shape, num_classes = 4, filename = model_filename)
+        net = model_classifier_3b(input_shape, num_classes = 4, filename = model_filename, gpus = gpu)
     else:
         raise Exception('You have to indicate a model id!')
 
@@ -124,6 +126,9 @@ if __name__ == '__main__':
             y_pred = numpy.hstack(Y_pred) * 1.0
             print('validation accuracy epoch %d = %g' % ( epoch, sum(y_true == y_pred) / len(y_true)))
             log_file.write('validation accuracy epoch %d = %g\n' % ( epoch, sum(y_true == y_pred) / len(y_true))) # eddl.get_metrics(net)[0]))
+            print(confusion_matrix(y_true, y_pred, labels = [0, 1, 2, 3]))
+            print(classification_report(y_true, y_pred, target_names = ['inter-ictal', 'ictal', 'pre-ictal', 'post-ictal'])) 
+
 
         log_file.flush()
 
