@@ -423,19 +423,17 @@ class RawDataGenerator:
         Class for preloading data and provide batches.
     '''
 
-    def __init__(self, index_filenames, batch_size = 20, window_length = 256 * 4, shift = 256 * 2,
+    def __init__(self, batch_size = 20, window_length = 256 * 4, shift = 256 * 2,
                  min_interictal_length = 256 * 3600 * 4, # Select interictal samples with at least 4h of interictal period
                  preictal_length = 256 * 3600, # 1 hour before the seizure
                  do_shuffle = False,
                  do_standard_scaling = True,
-                 do_preemphasis = False,
-                 exclude_seizures = False,
                  mode = None,
                  patient_id = 'no_patient_id', load_stats = False,
                  debug_mode = False):
         '''
 
-            Constructor to create objects of the class **DataGenerator** and loads all the data.
+            Constructor to create objects of the class **RawDataGenerator** and load all the data.
             Future implementations will pave the way to load data from files on-the-fly in order to allow work
             with large enough datasets.
 
@@ -444,9 +442,6 @@ class RawDataGenerator:
 
             :param self:
                 Reference to the current object.
-
-            :param list index_filenames:
-                List of index filenames from which to load data filenames.
 
             :param int batch_size:
                 Number of samples per batch.
@@ -499,8 +494,6 @@ class RawDataGenerator:
         self.shift = shift
         self.do_shuffle = do_shuffle
         self.do_standard_scaling = do_standard_scaling
-        self.do_preemphasis = do_preemphasis
-        self.exclude_seizures = exclude_seizures
         self.mode = mode
         self.min_interictal_length = min_interictal_length
         self.preictal_length = preictal_length
@@ -521,14 +514,6 @@ class RawDataGenerator:
         self.test_indices = list()
         self.current_fold = -1
         #
-        self.filenames = list()
-        for fname in index_filenames:
-            with open(fname, 'r') as f:
-                for l in f:
-                    if l[0] != '#':
-                        self.filenames.append(l.strip() + '.edf.pbz2')
-                f.close()
-        #
         self.interictal_data = list()
         self.preictal_data = list()
         self.train_data = list()
@@ -536,51 +521,28 @@ class RawDataGenerator:
         self.test_data = list()
         #
 
-        interictal = list()
+        #interictal = list()
         _input_shape = None
-        print("Loading EDF signals...")
-        for fname in tqdm(self.filenames):
-            d_p = load_file(fname, exclude_seizures = False,
-                        do_preemphasis = False,
-                        separate_seizures = True,
-                        verbose = 0)
+        print("Loading data...")
+        self.patient_dir = 'data/' + self.patient_id + '_raw'
+        self.interictal_data = numpy.load(os.path.join(self.patient_dir, self.patient_id + '_interictal_raw.npy'))# , mmap_mode='r')
+        print(f'Interictal data shape: {self.interictal_data.shape}')
 
-            for p, label in d_p:
 
-                if label == 0:
-                    for x in p:
-                        interictal.append(numpy.array(x, dtype=numpy.float64))
-                        if self.input_shape is None:
-                            self.input_shape = (self.window_length,) + x.shape
-                #
-                elif label == 1:
-                    if len(interictal) > (256 * 3600 // 2):
-                        # More than half an hour from the previous seizure, consider them as separated seizures
-                        preictal_len = min(self.preictal_length, len(interictal))
-                        preictal = interictal[(len(interictal) - preictal_len):]
-                        self.preictal_data.append(numpy.array(preictal, dtype=numpy.float64))
-                        self.num_signal_vectors += len(preictal)
-
-                        if (len(interictal) - preictal_len) >= self.min_interictal_length:
-                            # Enough interictal data, store it
-                            interictal = interictal[:(len(interictal) - preictal_len)]
-                            self.interictal_data.append(numpy.array(interictal, dtype=numpy.float64))
-                            self.num_signal_vectors += len(interictal)
-                    #   
-                    interictal = list() # Reset interictal
-                #
-            #
-            if len(interictal) >= self.min_interictal_length:
-                self.interictal_data.append(numpy.array(interictal, dtype=numpy.float64))
-        #       
-        
+        for filename in os.listdir(self.patient_dir):
+            if 'preictal' in filename:
+                preictal = numpy.load(os.path.join(self.patient_dir, filename))
+                self.preictal_data.append(preictal)
+        #
+                
         self.num_seizures = len(self.preictal_data)
+        self.input_shape = (self.window_length,) + self.interictal_data[0].shape
         print("Signals loaded!")
         print("Number of seizures available:", self.num_seizures)
         if self.num_seizures < 3:
             raise Exception('Not enough seizures, please try other parameters or patients.')
 
-        self.interictal_data = numpy.vstack(self.interictal_data)
+        #self.interictal_data = numpy.vstack(self.interictal_data)
 
         self.next_fold()
         #
@@ -588,8 +550,8 @@ class RawDataGenerator:
         self.std  = numpy.ones(self.input_shape[-1])
         #
         if self.do_standard_scaling:
-            print("Scaling data...")
-            if self.mode == 'train' and self.load_stats:
+            if self.mode == 'train' and not self.load_stats:
+                print("Calculating mean and std for scaling the data...")
                 means = []
                 counts = []
                 stddevs = []
@@ -611,15 +573,18 @@ class RawDataGenerator:
 
                 #
                 array = numpy.array([self.mean, self.std])
-                numpy.save('models/statistics_raw_' + self.patient_id + '.npy', array)
+                numpy.save(os.path.join(self.patient_dir, self.patient_id + 'raw_stats.npy'), array)
                 del array
                 del means
                 del counts
                 del stddevs
             else:
-                array = numpy.load('models/statistics_raw_' + self.patient_id + '.npy')
-                self.mean = array[0]
-                self.std = array[1]
+                print("Loading mean and std for scaling the data...")
+                stats_file = os.path.join(self.patient_dir, self.patient_id + '_raw_stats.npy')
+                self.mean, self.std = numpy.load(stats_file)
+                #array = numpy.load('models/statistics_raw_' + self.patient_id + '.npy')
+                #self.mean = array[0]
+                #self.std = array[1]
         #
         self.on_epoch_end()
 
@@ -682,9 +647,13 @@ class RawDataGenerator:
                 index, label = self.train_indices[batch_index * self.batch_size + sample]
                 X.append(numpy.array(self.train_data[index : index + self.window_length], dtype=numpy.float64))
 
+            elif self.mode == 'val':
+                index, label = self.val_indices[batch_index * self.batch_size + sample]
+                X.append(numpy.array(self.train_data[index : index + self.window_length], dtype=numpy.float64))
+
             elif self.mode == 'test':
                 index, label = self.test_indices[batch_index * self.batch_size + sample]
-                X.append(self.test_data[index : index + self.window_length])
+                X.append(numpy.array(self.test_data[index : index + self.window_length], dtype=numpy.float64))
             #
             Y.append(label)
         #
@@ -766,7 +735,7 @@ class RawDataGenerator:
         #
 
         self.train_indices = list()
-        #self.val_indices = list()
+        self.val_indices = list()
         self.test_indices = list()
 
         #######################################################################
@@ -776,11 +745,22 @@ class RawDataGenerator:
             self.train_indices.append((i, 0))
             interictal_train_samples += 1
         
+        i = int(interictal_train_samples * 0.75)
+        interictal_train_samples -= i
+        self.val_indices = self.train_indices[i:] # Last 25% of the samples for validation
+        self.train_indices = self.train_indices[:i]
+
+        
         # Oversampling on preictal samples
         preictal_train_samples = 0
         for i in numpy.arange(first_train_preictal, len(self.train_data) - self.window_length, step = self.shift // 5):
             self.train_indices.append((i, 1))
             preictal_train_samples += 1
+        
+        i = interictal_train_samples + int(preictal_train_samples * 0.75)
+        preictal_train_samples = preictal_train_samples - i + interictal_train_samples
+        self.val_indices = self.val_indices + self.train_indices[i:] # Last 25% of the samples for validation
+        self.train_indices = self.train_indices[:i]
         #######################################################################
         
         #######################################################################
@@ -799,13 +779,158 @@ class RawDataGenerator:
 
         self.num_training_samples = interictal_train_samples + preictal_train_samples
         self.num_test_samples = interictal_test_samples + preictal_test_samples
+        self.num_validation_samples = len(self.val_indices)
+        
 
         print("Fold generated")
         print("Input shape: ", self.input_shape)
-        print("Training interictal samples: %d (%0.2f %%)" % (interictal_train_samples, 100.0 * interictal_train_samples / (interictal_train_samples + preictal_train_samples)))
-        print("Training preictal samples: %d (%0.2f %%)" % (preictal_train_samples, 100.0 * preictal_train_samples / (interictal_train_samples + preictal_train_samples)))
+        interictal_train_samples = interictal_train_samples / 0.75
+        preictal_train_samples = preictal_train_samples / 0.75
+        print("Training 75%% + Val 25%% interictal samples: %d (%0.2f %%)" % (interictal_train_samples, 100.0 * interictal_train_samples / (interictal_train_samples + preictal_train_samples)))
+        print("Training 75%% + Val 25%% preictal samples: %d (%0.2f %%)" % (preictal_train_samples, 100.0 * preictal_train_samples / (interictal_train_samples + preictal_train_samples)))
         print("Test interictal samples: %d (%0.2f %%)" % (interictal_test_samples, 100.0 * interictal_test_samples / (interictal_test_samples + preictal_test_samples)))
         print("Test preictal samples: %d (%0.2f %%)" % (preictal_test_samples, 100.0 * preictal_test_samples / (interictal_test_samples + preictal_test_samples)))
+
+
+class RawDataProcessor:
+    '''
+        Class for preprocessing the EEG raw signals and create a dataset.
+    '''
+
+    def __init__(self, index_filenames,
+                 min_interictal_length = 256 * 3600 * 4, # Select interictal samples with at least 4h of interictal period
+                 preictal_length = 256 * 3600, # 1 hour before the seizure
+                 do_standard_scaling = True,
+                 do_preemphasis = False,
+                 exclude_seizures = False,
+                 patient_id = 'no_patient_id'):
+        '''
+
+            Constructor to create objects of the class **RawDataProcessor** and load all the data.
+            Future implementations will pave the way to load data from files on-the-fly in order to allow work
+            with large enough datasets.
+
+            Parameters
+            ----------
+
+            :param self:
+                Reference to the current object.
+
+            :param list index_filenames:
+                List of index filenames from which to load data filenames.
+
+            :param int min_interictal_length:
+                Minimum number of vectors of channels in a period to consider
+                the period as interictal.
+
+            :param int preictal_length:
+                Length of the preictal period in number of vectors.
+
+            :param boolean do_standard_scaling:
+                Flag to indicate whether to scale each channel to zero
+                mean and unit variance.
+
+            :param boolean do_preemphasis:
+                Flag to indicate whether to apply a preemphasis FIR filter
+                to each signal/channel.
+
+            :param boolean exclude_seizures:
+                Flag to indicate whether to exclude the records with seizures.
+            
+            :param string patient_id:
+                String to indicate the patient id. It is used to save the statistics file.
+
+        '''
+        #
+        self.do_standard_scaling = do_standard_scaling
+        self.do_preemphasis = do_preemphasis
+        self.exclude_seizures = exclude_seizures
+        self.min_interictal_length = min_interictal_length
+        self.preictal_length = preictal_length
+        self.patient_id = patient_id
+        #
+        self.input_shape = None
+        self.num_signal_vectors = 0
+        #
+        os.makedirs('data', exist_ok = True)
+        if os.path.exists('data/' + self.patient_id + '_raw'):
+            if len(os.listdir('data/' + self.patient_id + '_raw')) > 0:
+                raise Exception('Found already processed data from patient ' + self.patient_id 
+                                + ', please clean the following dir: \n' + 'data/' + self.patient_id + '_raw')
+            #
+        #
+        else:
+            os.makedirs('data/' + self.patient_id + '_raw')
+            #os.makedirs('data/' + self.patient_id + '/interictal', exist_ok = True)
+            #os.makedirs('data/' + self.patient_id + '/preictal', exist_ok = True)
+        #
+        self.filenames = list()
+        for fname in index_filenames:
+            with open(fname, 'r') as f:
+                for l in f:
+                    if l[0] != '#':
+                        self.filenames.append(l.strip() + '.edf.pbz2')
+                f.close()
+        #
+        self.interictal_data = list()
+        self.preictal_data = list()
+        #
+
+        interictal = list()
+        print("Loading EDF signals...")
+        for fname in tqdm(self.filenames):
+            d_p = load_file(fname, exclude_seizures = False,
+                        do_preemphasis = False,
+                        separate_seizures = True,
+                        verbose = 0)
+
+            for p, label in d_p:
+
+                if label == 0:
+                    for x in p:
+                        interictal.append(numpy.array(x, dtype=numpy.float64))
+                        #if self.input_shape is None:
+                        #    self.input_shape = (self.window_length,) + x.shape
+                #
+                elif label == 1:
+                    if len(interictal) > (256 * 3600 // 2):
+                        # More than half an hour from the previous seizure, consider them as separated seizures
+                        preictal_len = min(self.preictal_length, len(interictal))
+                        preictal = interictal[(len(interictal) - preictal_len):]
+                        self.preictal_data.append(numpy.array(preictal, dtype=numpy.float64))
+                        self.num_signal_vectors += len(preictal)
+
+                        if (len(interictal) - preictal_len) >= self.min_interictal_length:
+                            # Enough interictal data, store it
+                            interictal = interictal[:(len(interictal) - preictal_len)]
+                            self.interictal_data.append(numpy.array(interictal, dtype=numpy.float64))
+                            self.num_signal_vectors += len(interictal)
+                    #   
+                    interictal = list() # Reset interictal
+                #
+            #
+            if len(interictal) >= self.min_interictal_length:
+                self.interictal_data.append(numpy.array(interictal, dtype=numpy.float64))
+                interictal = list() # Reset interictal
+        #       
+        
+        self.num_seizures = len(self.preictal_data)
+        print("Signals loaded!")
+        print("Number of seizures available:", self.num_seizures)
+        if self.num_seizures < 3:
+            raise Exception('Not enough seizures, please try other parameters or patients.')
+
+        self.interictal_data = numpy.vstack(self.interictal_data)
+        #
+
+        # Save the data
+        numpy.save('data/' + self.patient_id + '_raw/' + self.patient_id + '_interictal_raw.npy', self.interictal_data)
+
+        for index in range(len(self.preictal_data)):
+            preictal_period = self.preictal_data[index]
+            dest_filename = 'data/' + self.patient_id + '_raw/' + self.patient_id + '_preictal_raw_' + str(index) + '.npy'
+            numpy.save(dest_filename, numpy.array(preictal_period, dtype=numpy.float64))
+        #
 
 
 if __name__ == '__main__':

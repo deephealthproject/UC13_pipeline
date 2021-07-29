@@ -157,7 +157,12 @@ class MySignalStats:
     def __init__(self, data, window_length = 256 * 4, subsampling_period = 256 * 2):
         self.data = data
         self.n_samples = len(self.data)
-        self.n_subsamples = (len(self.data) - subsampling_period) // subsampling_period
+
+        if window_length == subsampling_period:
+            self.n_subsamples = len(self.data) // subsampling_period
+        else:
+            self.n_subsamples = (len(self.data) - subsampling_period) // subsampling_period
+
         time_domain_statistics = list()
         i = window_length
         count = 0
