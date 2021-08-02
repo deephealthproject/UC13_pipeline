@@ -5,7 +5,8 @@ import numpy
 from pyeddl import eddl
 from pyeddl.tensor import Tensor
 
-from data_utils import DataGenerator, RawDataGenerator
+from data_utils import RawDataGenerator
+from evaluation_utils import calculate_fpr
 #from data_utils_eeg import PairDataGenerator
 from models_01 import model_classifier_1a, model_classifier_2a
 from sklearn.metrics import classification_report, confusion_matrix, precision_recall_fscore_support
@@ -40,10 +41,10 @@ if __name__ == '__main__':
     dg = RawDataGenerator(batch_size = batch_size,
                         window_length = 256 * 10,
                         shift = 256 * 10,
-                        min_interictal_length = 256 * 3600 * 4, # 4 hours
-                        preictal_length = 256 * 3600, # 1 hour
+                        #min_interictal_length = 256 * 3600 * 4, # 4 hours
+                        #preictal_length = 256 * 3600, # 1 hour
                         do_shuffle = True,
-                        load_stats = False,
+                        load_stats = True,
                         mode = 'train',
                         patient_id = patient_id)
 
@@ -63,11 +64,11 @@ if __name__ == '__main__':
 
 
     log_file = open(f'log/model_classifier_{model_id}_patient_{patient_id}_train.log', 'a')
-    log_file.write("fold,epoch,bce,train_acc,val_acc,val_precision_preictal,val_recall_preictal,val_fscore_preictal\n")
+    log_file.write("fold,epoch,bce,train_acc,val_acc,val_precision_preictal,val_recall_preictal,val_fscore_preicta,fprl\n")
     log_file.flush()
 
     test_log = open(f'log/model_classifier_{model_id}_patient_{patient_id}_test.log', 'a')
-    test_log.write("fold,test_acc,test_precision_preictal,test_recall_preictal,test_fscore_preictal\n")
+    test_log.write("fold,test_acc,test_precision_preictal,test_recall_preictal,test_fscore_preictal,fpr\n")
     test_log.flush()
 
     for fold in range(dg.num_seizures):
@@ -125,10 +126,12 @@ if __name__ == '__main__':
 
             y_true = numpy.hstack(Y_true) * 1.0
             y_pred = numpy.hstack(Y_pred) * 1.0
+
             #print('fold %d validation accuracy epoch %d = %g' % ( fold, epoch, sum(y_true == y_pred) / len(y_true)))
             #log_file.write('fold %d validation accuracy epoch %d = %g\n' % ( fold, epoch, sum(y_true == y_pred) / len(y_true))) # eddl.get_metrics(net)[0]))
             val_accuracy = sum(y_true == y_pred) / len(y_true)
             precision, recall, fscore, _ = precision_recall_fscore_support(y_true, y_pred)
+            fpr = calculate_fpr(y_pred)
 
             scores = [val_accuracy, precision[1], recall[1], fscore[1]]
             if scores[score_to_use] > best_scores[score_to_use]:
@@ -144,11 +147,12 @@ if __name__ == '__main__':
 
             print(confusion_matrix(y_true, y_pred, labels = [0, 1]))
             print(classification_report(y_true, y_pred, target_names = ['inter-ictal', 'pre-ictal']))
-            log_file.write("%d,%d,%g,%g,%g,%g,%g,%g\n" % (fold, epoch, eddl.get_losses(net)[0], 
+            print(f'FPR/h: {fpr}')
+            log_file.write("%d,%d,%g,%g,%g,%g,%g,%g,%g\n" % (fold, epoch, eddl.get_losses(net)[0], 
                                                 eddl.get_metrics(net)[0], 
                                                 val_accuracy,
                                                 precision[1], recall[1],
-                                                fscore[1]))
+                                                fscore[1], fpr))
             log_file.flush()
 
 
@@ -175,11 +179,14 @@ if __name__ == '__main__':
         #print('fold %d validation accuracy epoch %d = %g' % ( fold, epoch, sum(y_true == y_pred) / len(y_true)))
         #log_file.write('fold %d validation accuracy epoch %d = %g\n' % ( fold, epoch, sum(y_true == y_pred) / len(y_true))) # eddl.get_metrics(net)[0]))
         precision, recall, fscore, _ = precision_recall_fscore_support(y_true, y_pred)
+        fpr = calculate_fpr(y_pred)
+
         print(confusion_matrix(y_true, y_pred, labels = [0, 1]))
         print(classification_report(y_true, y_pred, target_names = ['inter-ictal', 'pre-ictal']))
+        print(f'FPR/h: {fpr}')
         test_log.write("%d,%g,%g,%g,%g,%g\n" % (fold, sum(y_true == y_pred) / len(y_true),
                                             precision[1], recall[1],
-                                            fscore[1]))
+                                            fscore[1], fpr))
         test_log.flush()
 
     # for fold

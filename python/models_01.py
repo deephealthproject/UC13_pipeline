@@ -19,6 +19,7 @@ def model_classifier_1a(input_shape, num_classes, filename = None, gpus = [1]):
             if do_pool:
                 layer = eddl.MaxPool2D(layer, pool_size = [2, 1], strides = [2, 1])
             layer = eddl.ReLu(eddl.BatchNormalization(eddl.Conv2D(layer, num_filters, kernel_size = [3, 3], padding = 'same'), affine = True))
+            #layer = eddl.ReLu(eddl.Conv2D(layer, num_filters, kernel_size = [3, 3], padding = 'same'))
             #layer = eddl.ReLu(eddl.BatchNormalization(eddl.Conv2D(layer, num_filters, kernel_size = [3, 3], padding = 'same'), affine = True))
             do_pool = True
 
@@ -26,13 +27,14 @@ def model_classifier_1a(input_shape, num_classes, filename = None, gpus = [1]):
             if do_pool:
                 layer = eddl.MaxPool2D(layer, pool_size = [2, 2], strides = [2, 2])
             layer = eddl.ReLu(eddl.BatchNormalization(eddl.Conv2D(layer, num_filters, kernel_size = [3, 3], padding = 'same'), affine = True))
+            #layer = eddl.ReLu(eddl.Conv2D(layer, num_filters, kernel_size = [3, 3], padding = 'same'))
             #layer = eddl.ReLu(eddl.BatchNormalization(eddl.Conv2D(layer, num_filters, kernel_size = [3, 3], padding = 'same'), affine = True))
             do_pool = True
         
         
         #layer = eddl.GlobalMaxPool2D(layer)
         layer = eddl.Flatten(layer)
-        #layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer, 1000), affine = True))
+        layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer, 1000), affine = True))
         #layer = eddl.Dropout(layer, 0.4)
         layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer,  500), affine = True))
         #layer = eddl.Dropout(layer, 0.3)
