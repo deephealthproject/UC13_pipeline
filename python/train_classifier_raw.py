@@ -63,11 +63,11 @@ if __name__ == '__main__':
     #    raise Exception('You have to indicate a model id!')
 
 
-    log_file = open(f'log/model_classifier_{model_id}_patient_{patient_id}_train.log', 'a')
+    log_file = open(f'log/model_classifier_{model_id}_patient_{patient_id}_train_raw.log', 'a')
     log_file.write("fold,epoch,bce,train_acc,val_acc,val_precision_preictal,val_recall_preictal,val_fscore_preicta,fprl\n")
     log_file.flush()
 
-    test_log = open(f'log/model_classifier_{model_id}_patient_{patient_id}_test.log', 'a')
+    test_log = open(f'log/model_classifier_{model_id}_patient_{patient_id}_test_raw.log', 'a')
     test_log.write("fold,test_acc,test_precision_preictal,test_recall_preictal,test_fscore_preictal,fpr\n")
     test_log.flush()
 

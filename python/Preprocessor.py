@@ -157,15 +157,17 @@ class MySignalStats:
     def __init__(self, data, window_length = 256 * 4, subsampling_period = 256 * 2):
         self.data = data
         self.n_samples = len(self.data)
-
+        #print(f'N samples: {self.n_samples}')
+        #print(f'Subsampling period: {subsampling_period}')
+        #print(f'Window length: {window_length}')
         if window_length == subsampling_period:
             self.n_subsamples = len(self.data) // subsampling_period
         else:
             self.n_subsamples = (len(self.data) - subsampling_period) // subsampling_period
+            #self.n_subsamples = len(self.data) // subsampling_period
 
         time_domain_statistics = list()
         i = window_length
-        count = 0
         while i <= self.n_samples:
             x = self.data[i - window_length : i]
             mean = x.mean()
@@ -193,7 +195,8 @@ class MySignalStats:
             i += subsampling_period
 
         self.time_domain_statistics = np.array(time_domain_statistics)
-        assert len(self.time_domain_statistics) == self.n_subsamples
+        #print(self.n_subsamples, len(self.time_domain_statistics))
+        #assert len(self.time_domain_statistics) == self.n_subsamples
 
     def time_derivative(self, x, alphas):
         y = np.convolve(x, np.array(alphas), mode = 'valid')

@@ -3,8 +3,6 @@ import os
 import numpy
 from tqdm import tqdm
 from data_utils import RawDataProcessor, EEGDataProcessor
-import Preprocessor as preprocessor
-from multiprocessing import Pool, cpu_count
 
 
 if __name__ == '__main__':
