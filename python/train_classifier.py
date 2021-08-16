@@ -44,6 +44,14 @@ if __name__ == '__main__':
                             mode = 'train',
                             patient_id = patient_id)
 
+    #print(f'num training batches: ' {len(dg)})
+    #dg.mode = 'val'
+    #print(f'num val batches: ' {len(dg)})
+    #dg.mode = 'test'
+    #print(f'num test batches: ' {len(dg)})
+    #quit()
+    
+
     print(f"Number of seizures: %d" % dg.num_seizures)
 
     x, y = dg[0]
@@ -188,6 +196,8 @@ if __name__ == '__main__':
                                             precision[1], recall[1],
                                             fscore[1], fpr))
         test_log.flush()
+
+        dg.next_fold()
 
     # for fold
     log_file.close()

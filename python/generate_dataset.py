@@ -35,4 +35,3 @@ if __name__ == '__main__':
                 do_preemphasis = False,
                 exclude_seizures = False,
                 patient_id = patient_id)
-    

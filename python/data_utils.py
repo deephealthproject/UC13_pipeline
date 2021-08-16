@@ -886,7 +886,7 @@ class EEGDataProcessor:
                     time_domain_statistics[ch].append(po[2])
             #
             num_samples = sum([len(x) for x in fbank[0]])
-            print(f'Num samples: {num_samples}')
+            #print(f'Num samples: {num_samples}')
             X = numpy.zeros([num_samples, len(channel_list), fbank[0][0].shape[1] + time_domain_statistics[0][0].shape[1]])
         
             # Fill the X array with fbank and statistics values
