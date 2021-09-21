@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# we suggest to run this scripts in a similar way to:
+# we suggest to run this script in a similar way to:
 #
 # nohup scripts/edf_to_filter_bank.sh  >log/edf2fbank.out 2>log/edf2fbank.err &
 #
@@ -22,11 +22,12 @@ do
     fi
 done
 
+export PYTHONPATH="${PYTHONPATH:-.}:python"
 
 for file in ${file_list_2}
 do
     if [ ${file:0:1} != '#' ]
     then
-        echo ${file}
+        echo ${file} 
     fi
-done | python python/edf_to_filter_bank.py
+done | python3 python/old_python/edf_to_filter_bank.py

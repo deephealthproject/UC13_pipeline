@@ -15,6 +15,9 @@ do
             else
                 echo "Destination directory ../clean_signals/chb${n} does not exist!"
             fi
+        else
+            diff  ../physionet.org/files/chbmit/1.0.0/chb${n}/chb${n}-summary.txt ../clean_signals/chb${n}/chb${n}-summary.txt
+            echo diff  ../physionet.org/files/chbmit/1.0.0/chb${n}/chb${n}-summary.txt ../clean_signals/chb${n}/chb${n}-summary.txt
         fi
     fi
 done
