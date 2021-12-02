@@ -1,9 +1,0 @@
-../clean_signals/chb20/chb20_29
-../clean_signals/chb20/chb20_30
-../clean_signals/chb20/chb20_31
-../clean_signals/chb20/chb20_34
-../clean_signals/chb20/chb20_59
-../clean_signals/chb20/chb20_60
-../clean_signals/chb20/chb20_15
-../clean_signals/chb20/chb20_16
-../clean_signals/chb20/chb20_68

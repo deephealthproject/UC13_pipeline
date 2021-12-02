@@ -1,3 +1,0 @@
-../clean_signals/chb19/chb19_18
-../clean_signals/chb19/chb19_19
-../clean_signals/chb19/chb19_20

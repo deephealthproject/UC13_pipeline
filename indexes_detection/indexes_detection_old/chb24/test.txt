@@ -1,7 +1,0 @@
-../clean_signals/chb24/chb24_19
-../clean_signals/chb24/chb24_20
-../clean_signals/chb24/chb24_22
-../clean_signals/chb24/chb24_14
-../clean_signals/chb24/chb24_15
-../clean_signals/chb24/chb24_17
-../clean_signals/chb24/chb24_21

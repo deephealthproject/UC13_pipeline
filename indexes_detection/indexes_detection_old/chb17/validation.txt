@@ -1,2 +1,0 @@
-../clean_signals/chb17/chb17c_03
-../clean_signals/chb17/chb17c_04

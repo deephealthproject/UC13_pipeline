@@ -1,3 +1,0 @@
-../clean_signals/chb14/chb14_26
-../clean_signals/chb14/chb14_29
-../clean_signals/chb14/chb14_17
