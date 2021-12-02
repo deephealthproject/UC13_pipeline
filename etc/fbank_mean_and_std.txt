@@ -1,3 +1,0 @@
-To scale to zero mean and unity standard deviation all the channels of the filter bank.
-mean: 2.4653737460652594
-std: 0.7361729493017065
