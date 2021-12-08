@@ -40,14 +40,15 @@ def main(args):
     resume_dir = args.resume
     starting_epoch = args.starting_epoch
     gpus = args.gpus
+    initial_lr = args.lr
+    optimizer = args.opt
     
     model_checkpoint = None
-
 
     # Create dirs for the experiment
     if resume_dir is None:
         os.makedirs('experiments', exist_ok=True)
-        exp_name = f'detection_recurrent_{patient_id}_LSTM'
+        exp_name = f'detection_recurrent_{patient_id}_{model_id}_{optimizer}_{initial_lr}'
         exp_dir = f'experiments/{exp_name}'
         os.makedirs(exp_dir, exist_ok=False)
         os.makedirs(exp_dir + '/models')
@@ -96,6 +97,8 @@ def main(args):
                        dg.input_shape,
                        num_classes=2,
                        filename=model_checkpoint,
+                       lr = initial_lr,
+                       opt = optimizer,
                        gpus=gpus)
     #
 
@@ -221,7 +224,7 @@ def main(args):
         print(report, file=sys.stderr)
         print('***************************************************************\n\n', file=sys.stderr)
 
-        log_file.write('%d,%d,%g,%g,%g,%g,%g\n' % (epoch, -1, losses[0],
+        log_file.write('%d,%d,%g,%g,%g,%g,%g\n' % (epoch, losses[0], -1,
             val_accuracy_single_channel, fscore_single_channel,
             val_accuracy, fscore))
 
@@ -254,7 +257,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--id', help='Id of the patient.', required=True)
 
-    parser.add_argument('--model', help='Model identifier.', default='1')
+    parser.add_argument('--model', help='Model id to use: "lstm", "gru".',
+                         default='lstm')
 
     parser.add_argument('--epochs', type=int, help='Number of epochs to' +
          ' perform.', default=1)
@@ -265,6 +269,11 @@ if __name__ == '__main__':
     parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
         ' Usage "--gpus 1 1" (two GPUs)', nargs="+", default=[1], type=int)
 
+    parser.add_argument('--lr', type=float, help='Initial learning rate. Default -> 0.0001',
+        default=0.0001)
+
+    parser.add_argument('--opt', help='Optimizer: "adam", "sgd". Default -> adam',
+        default='adam')
 
     parser.add_argument('--resume', help='Directory of the experiment dir to resume.',
                 default=None)

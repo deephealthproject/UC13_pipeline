@@ -26,7 +26,9 @@ def calculate_detection_metrics(y_true,
                                 y_pred,
                                 sample_shift = 0.5, # in seconds
                                 analysis_window_size = 20, # in time steps
-                                ratio_for_positive_alarm = 0.8):
+                                ratio_for_positive_alarm = 0.8,
+                                detection_threshold = 10 # in seconds
+                                ):
     """
         This function calculates metrics for the detection of seizures
         such as Accuracy of the detection alarms, Sensitivity, Specifity and
@@ -50,9 +52,12 @@ def calculate_detection_metrics(y_true,
             Number of time steps to analyze each time to decide the raising
             of an alarm or not.
 
-        :param int ratio_for_positive_alarm:
+        :param float ratio_for_positive_alarm:
             Percentage of the analysis window to be predicted as positive to 
             consider raising an alarm. 
+
+        :param int detection_threshold:
+            Number of seconds within the model has to detect each seizure.
 
 
         :returns tuple metrics:
@@ -62,69 +67,108 @@ def calculate_detection_metrics(y_true,
     
     assert len(y_true) == len(y_pred)
 
-    # Calculate number of seizures
+    #interictal_time = len(y_true[y_true == 0]) * sample_shift  / 3600 # in hours
+
+    # Results at alarm level
     num_seizures = 0
-    i = 0
-    while i < len(y_true):
-        if y_true[i] == 1:
-            num_seizures += 1
-            while y_true[i] == 1:
-                i += 1
-            #
-        #
-    #
-
-
-    interictal_time = len(y_true[y_true == 0]) * sample_shift  / 3600 # in hours
-
-    false_alarms = 0
-    true_alarms = 0
+    false_positives = 0
+    true_positives = 0
     latencies = list()
 
-    i = analysis_window_size
+    # Results at sliding window level
+    y_true_window = list()
+    y_pred_window = list()
+
+
+    i = analysis_window_size # To iterate over the results
+
+    current_state = y_true[i-1] # 0 for interictal, 1 for ictal
+    new_seizure = False   # Flag to know if we detected a seizure for the first time
+
+    # Iterate over y_pred
     while i < len(y_pred):
+        
+        # Check if there is a new seizure and count it
+        if y_true[i-1] == 1 and y_true[i-2] == 0:
+            # New seizure
+            num_seizures += 1
+
 
         # Get number of positive predictions inside the analysis window
         positive_predictions = sum(y_pred[i-analysis_window_size : i])
         positive_ratio = positive_predictions / analysis_window_size
 
+
         if positive_ratio >= ratio_for_positive_alarm:
             # Raise an alarm, possible seizure detected
+
+            # Add sliding window results
+            y_pred_window.append(1)
+            y_true_window.append(y_true[i-1])
+
+            # Check if we are detecting a seizure for the first time
+            if current_state == 0:
+                # Detected the seizure for the first time
+                current_state = 1
+                new_seizure = True # To store latency in case of correct detection
+
             if y_true[i-1] == 0:
                 # False alarm
-                false_alarms += 1
+                false_positives += 1
 
             elif y_true[i-1] == 1:
-                # Correct detection
-                true_alarms += 1
-
+                # Get distance to the onset
                 # Calculate latency - find the onset of the seizure
                 j = i - 1
                 while y_true[j] == 1:
                     j -= 1
                 #
-                latency = (i - 1 - j) * sample_shift
-                latencies.append(latency)
 
-                print(f'Detected a seizure with a latency of {latency} seconds')
+                latency = (i - 1 - j) * sample_shift   # (i - 1) - (j + 1) + 1
 
-                # Move window to the end of the seizure
-                while y_true[i] == 1:
-                    i += 1
-                i = i + analysis_window_size
+                if latency <= detection_threshold:
+                    # True positive
+                    true_positives += 1
+
+                    # Only save latency in case of the first time we detect the seizure
+                    if new_seizure:
+                        latencies.append(latency)
+                else:
+                    # False positive - too late
+                    # TODO: Consider if not counting as false positive
+                    false_positives += 1
 
             else:
                 raise Exception(f'Unexpected value for ground truth {y_true[i-1]}')
+            #
+        else:
+            # Negative prediction
+
+            # Add sliding window results
+            y_pred_window.append(0)
+            y_true_window.append(y_true[i-1])
+
+            # Check if we are detecting a normal state for the first time
+            if current_state == 1:
+                # Detected the normal state for the first time
+                current_state = 0
         #
         # Update i
         i += 1
     #
 
-    average_latency = sum(latencies) / len(latencies)
-    false_alarms_per_hour = false_alarms / interictal_time
-    precision = true_alarms / num_seizures
+    # Results at sliding window level
+    y_true_window = numpy.array(y_true_window) * 1.0
+    y_pred_window = numpy.array(y_pred_window) * 1.0
+    accuracy_window = sum(y_true_window == y_pred_window) / len(y_true_window)
 
-    return average_latency, false_alarms_per_hour, precision
+
+    # Results at alarm level
+    average_latency = sum(latencies) / len(latencies)
+    recall = len(latencies) / num_seizures  # Recall
+    false_positives_per_hour = false_positives / (len(y_pred) * sample_shift)
+
+    return accuracy_window, average_latency, false_positives_per_hour, recall
 
 
 
@@ -266,12 +310,13 @@ def main(args):
     
 
     # Calculate and print other metrics: 
-    latency, fp_h, precision = calculate_detection_metrics(y_true, y_pred)
+    acc_window, latency, fp_h, recall = calculate_detection_metrics(y_true, y_pred)
 
-    print('Global metrics after inference\n\n')
-    print(f'Percentage of detected seizures: {precision * 100.0}')
-    print(f'Average latency: {latency}')
-    print(f'False Alarms per Hour: {fp_h}')
+    print('Global metrics after inference\n\n', file=sys.stderr)
+    print(f'Accuracy of the sliding window: {acc_window * 100.0:.4f}', file=sys.stderr)
+    print(f'Percentage of detected seizures: {recall * 100.0:.4f}', file=sys.stderr)
+    print(f'Average latency: {latency} seconds', file=sys.stderr)
+    print(f'False Alarms per Hour: {fp_h}', file=sys.stderr)
 
     print('***************************************************************\n\n', file=sys.stderr)
 

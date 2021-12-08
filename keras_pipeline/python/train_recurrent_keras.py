@@ -228,7 +228,7 @@ def main(args):
         y_pred_single_channel = numpy.array(Y_pred_single_channel) * 1.0
 
         # Calculate validation loss
-        val_loss = accumulated_loss / len(dg_val)
+        val_loss = accumulated_loss / (len(dg_val) * 23)
 
         # Calculate other metrics
         val_accuracy_single_channel = sum(y_true_single_channel == y_pred_single_channel) / len(y_true_single_channel)

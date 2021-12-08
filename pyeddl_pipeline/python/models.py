@@ -4,8 +4,10 @@ from pyeddl import eddl
 def create_model(model_id, 
                  input_shape,
                  num_classes, 
-                 filename = None, 
-                 gpus = [1]):
+                 filename=None,
+                 lr=0.0001,
+                 opt='adam',
+                 gpus=[1]):
 
     """
         Builds and returns a model given a model id,
@@ -17,13 +19,17 @@ def create_model(model_id,
         net = recurrent_LSTM(input_shape,
                              num_classes=num_classes,
                              filename=filename,
-                             gpus = gpus)
+                             lr=lr,
+                             opt=opt,
+                             gpus=gpus)
                              
     elif model_id == 'gru':
         net = recurrent_GRU(input_shape,
                             num_classes=num_classes,
                             filename=filename,
-                            gpus = gpus)
+                            lr=lr,
+                            opt=opt,
+                            gpus=gpus)
 
     else:
         raise Exception('You have to provide an existing model_id!')
@@ -32,7 +38,7 @@ def create_model(model_id,
 
 
 
-def recurrent_LSTM(input_shape, num_classes, filename = None, gpus = [1]):
+def recurrent_LSTM(input_shape, num_classes, lr, opt, filename=None, gpus=[1]):
 
     if filename is not None and filename.endswith('.onnx'):
         # Load .onnx file if it is the case
@@ -47,7 +53,7 @@ def recurrent_LSTM(input_shape, num_classes, filename = None, gpus = [1]):
         #
         layer = eddl.LSTM(in_, 256)
         layer = eddl.Flatten(layer)
-        layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer,  256), affine = True))
+        layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer,  256), affine=True))
         layer = eddl.Softmax(eddl.Dense(layer, num_classes))
         #
         out_ = layer
@@ -56,14 +62,23 @@ def recurrent_LSTM(input_shape, num_classes, filename = None, gpus = [1]):
         initialize = True
     
     #print(f'{initialize=}')
+
+    if opt == 'adam':
+        optimizer = eddl.adam(lr=lr)
+    elif opt == 'sgd':
+        optimizer = eddl.sgd(lr=lr)
+    else:
+        raise Exception('Optimizer name not valid.')
+
+
     eddl.build(
             net,
-            o = eddl.adam(lr = 1.0e-4),
-            lo = ['softmax_cross_entropy'],
-            me = ['categorical_accuracy'],
-            cs = eddl.CS_GPU(g = gpus, mem = 'full_mem'),
+            o=optimizer,
+            lo=['softmax_cross_entropy'],
+            me=['categorical_accuracy'],
+            cs=eddl.CS_GPU(g=gpus, mem='full_mem'),
             #cs = eddl.CS_CPU(),
-            init_weights = initialize
+            init_weights=initialize
             )
     
     # Load .eddl file if it is the case
@@ -76,7 +91,7 @@ def recurrent_LSTM(input_shape, num_classes, filename = None, gpus = [1]):
 
 
 
-def recurrent_GRU(input_shape, num_classes, filename = None, gpus = [1]):
+def recurrent_GRU(input_shape, num_classes, lr, opt, filename=None, gpus=[1]):
 
     if filename is not None and filename.endswith('.onnx'):
         # Load .onnx file if it is the case
@@ -91,7 +106,7 @@ def recurrent_GRU(input_shape, num_classes, filename = None, gpus = [1]):
         #
         layer = eddl.GRU(in_, 256)
         layer = eddl.Flatten(layer)
-        layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer,  256), affine = True))
+        layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer,  256), affine=True))
         layer = eddl.Softmax(eddl.Dense(layer, num_classes))
         #
         out_ = layer
@@ -99,15 +114,22 @@ def recurrent_GRU(input_shape, num_classes, filename = None, gpus = [1]):
         net = eddl.Model([in_], [out_])
         initialize = True
     
-    #print(f'{initialize=}')
+
+    if opt == 'adam':
+        optimizer = eddl.adam(lr=lr)
+    elif opt == 'sgd':
+        optimizer = eddl.sgd(lr=lr)
+    else:
+        raise Exception('Optimizer name not valid.')
+
     eddl.build(
             net,
-            o = eddl.adam(lr = 1.0e-4),
-            lo = ['softmax_cross_entropy'],
-            me = ['categorical_accuracy'],
-            cs = eddl.CS_GPU(g = gpus, mem = 'full_mem'),
+            o=optimizer,
+            lo=['softmax_cross_entropy'],
+            me=['categorical_accuracy'],
+            cs=eddl.CS_GPU(g=gpus, mem='full_mem'),
             #cs = eddl.CS_CPU(),
-            init_weights = initialize
+            init_weights=initialize
             )
     
     # Load .eddl file if it is the case
