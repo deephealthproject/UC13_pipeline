@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# DeepHealth UC13
+models/
+logs/
+log/
+temp/
