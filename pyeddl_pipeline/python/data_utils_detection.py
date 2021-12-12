@@ -4,7 +4,6 @@ in the Use Case 13 of DeepHealth project.
 """
 import gc
 import os
-import sys
 import numpy
 from random import shuffle
 from tqdm import tqdm
@@ -111,7 +110,7 @@ class RawRecurrentDataGenerator:
         num_ictal = 0
         num_interictal = 0
 
-        print("Loading EDF signals...", file=sys.stderr)
+        print("Loading EDF signals...")
         for i in tqdm(range(len(self.filenames))):
             d_p = load_file(self.filenames[i],
                             exclude_seizures = False,
@@ -199,21 +198,21 @@ class RawRecurrentDataGenerator:
 
         self.input_shape = (self.window_length, )
 
-        print('Signals loaded!', file=sys.stderr)
-        print('\n-----------------------------------------------------------\n', file=sys.stderr)
-        print(f'Number of seizures available: {self.num_seizures}', file=sys.stderr)
+        print('Signals loaded!')
+        print('\n-----------------------------------------------------------\n')
+        print(f'Number of seizures available: {self.num_seizures}')
         #if self.num_seizures < 3:
         #    raise Exception('Not enough seizures, please try other patient.')
 
-        print(f'Number of samples (not sequences): {num_ictal + num_interictal}', file=sys.stderr)
-        print(f'Interictal samples: {num_interictal} ({(num_interictal / (num_ictal + num_interictal) * 100):.2f} %)', file=sys.stderr)
-        print(f'Ictal samples: {num_ictal} ({(num_ictal / (num_ictal + num_interictal) * 100):.2f} %)', file=sys.stderr)
+        print(f'Number of samples (not sequences): {num_ictal + num_interictal}')
+        print(f'Interictal samples: {num_interictal} ({(num_interictal / (num_ictal + num_interictal) * 100):.2f} %)')
+        print(f'Ictal samples: {num_ictal} ({(num_ictal / (num_ictal + num_interictal) * 100):.2f} %)')
 
-        print(f'\nNumber of sequences: {num_sequences}', file=sys.stderr)
-        print(f'Interictal sequences: {num_sequences_per_class[0]} ({num_sequences_per_class[0] / num_sequences * 100.0 :.2f}%)', file=sys.stderr)
-        print(f'Ictal sequences: {num_sequences_per_class[1]} ({num_sequences_per_class[1] / num_sequences * 100.0 :.2f}%)', file=sys.stderr)
-        print(f'Number of batches: {self.num_batches}', file=sys.stderr)
-        print('\n-----------------------------------------------------------\n', file=sys.stderr)
+        print(f'\nNumber of sequences: {num_sequences}')
+        print(f'Interictal sequences: {num_sequences_per_class[0]} ({num_sequences_per_class[0] / num_sequences * 100.0 :.2f}%)')
+        print(f'Ictal sequences: {num_sequences_per_class[1]} ({num_sequences_per_class[1] / num_sequences * 100.0 :.2f}%)')
+        print(f'Number of batches: {self.num_batches}')
+        print('\n-----------------------------------------------------------\n')
 
 
         # Standard scaling
@@ -222,7 +221,7 @@ class RawRecurrentDataGenerator:
             os.makedirs('stats', exist_ok=True)
 
             if self.in_training_mode:
-                print('Calculating statistics to scale the data...', file=sys.stderr)
+                print('Calculating statistics to scale the data...')
                 means = []
                 counts = []
                 stddevs = []
@@ -247,7 +246,7 @@ class RawRecurrentDataGenerator:
                 
             #
             else:
-                print('Loading statistics to scale the data...', file=sys.stderr)
+                print('Loading statistics to scale the data...')
                 array = numpy.load(f'stats/statistics_detection_raw_{patient_id}.npy')
                 self.mean = array[0]
                 self.std = array[1]
@@ -402,270 +401,6 @@ class RawRecurrentDataGenerator:
         return X, Y
 
 
-
-
-
-
-class RawRecurrentDataGenerator_Test:
-    '''
-        Class for preprocessing the EEG raw signals for the inference process.
-    '''
-
-    def __init__(self, index_filenames,
-                 window_length = 1, # in seconds
-                 shift = 0.5, # in seconds
-                 timesteps = 19, # in seconds
-                 sampling_rate = 256, # in Hz
-                 batch_size = 10,
-                 patient_id = None):
-        '''
-
-            Constructor to create objects of the class **RawDataProcessor** and load all the data.
-            Future implementations will pave the way to load data from files on-the-fly in order to allow work
-            with large enough datasets.
-
-            Parameters
-            ----------
-
-            :param self:
-                Reference to the current object.
-
-            :param list index_filenames:
-                List of index filenames from which to load data filenames.
-
-            :param int window_length:
-                Length of the window (in seconds) to slide through the signal.
-
-            :param int shift:
-                Number of seconds to shift the window to get each sample.
-
-            :param int timesteps:
-                Number of time steps for the sequences.
-
-            :param int sampling_rate:
-                Sampling rate of the signals, in Hz.
-
-            :param int batch_size:
-                Size of the batch to use.
-
-            :param string patient_id:
-                String to indicate the patient id. It is used to save the statistics file.
-
-        '''
-        #
-
-        if patient_id is None:
-            raise Exception('You have to specify a patient id, i.e. "chb01"')
-
-        self.sampling_rate = sampling_rate
-        self.batch_size = batch_size
-        self.patient_id = patient_id
-        #
-        self.window_length = window_length * sampling_rate
-        self.sample_shift = int(sampling_rate * shift) # Half of sample length
-        self.timesteps = timesteps
-        self.num_channels = 23
-        #
-        self.input_shape = None
-        self.num_batches = 0
-        #
-        self.filenames = list()
-        for fname in index_filenames:
-            with open(fname, 'r') as f:
-                for l in f:
-                    if l[0] != '#':
-                        self.filenames.append(l.strip() + '.edf.pbz2')
-                f.close()
-        #
-        # List to store the data separated by files
-        self.data = list()
-        # List to store the labels associated at each sample separated by files
-        self.labels = list()
-
-        self.num_seizures = 0
-
-        num_ictal = 0
-        num_interictal = 0
-
-        print("Loading EDF signals...")
-        for i in tqdm(range(len(self.filenames))):
-            d_p = load_file(self.filenames[i],
-                            exclude_seizures = False,
-                            do_preemphasis = False,
-                            separate_seizures = True,
-                            verbose = 0)
-
-            len_file = 0
-
-            self.data.append([])
-            self.labels.append([])
-            for p, label in d_p:
-                self.data[-1].append(p) # p.tolist() # Append data
-                self.labels[-1] += [label] * len(p)
-                if label == 1:
-                    self.num_seizures += 1
-                    num_ictal += len(p)
-                elif label == 0:
-                    num_interictal += len(p)
-                len_file += len(p)
-            #
-            #print(self.data[-1][0].shape)
-            self.data[-1] = numpy.concatenate(self.data[-1], axis=0)
-            #print(self.data[-1].shape)
-        #
-        # Iterate over the data list and generate indices for the sequences
-        # We will treat each recording as independent from the others
-        self.file_indexes = list()
-        for i in range(len(self.data)):
-            limit = len(self.data[i]) // self.sample_shift
-            limit -= self.timesteps + 1
-            limit = (limit * self.sample_shift) # - self.sample_shift 
-            self.file_indexes.append(numpy.arange(0, limit, step = self.sample_shift).tolist())
-        #     
-
-
-        num_sequences_per_class = [0, 0]
-        # Sequences indexes
-    
-        # List with the sequences of each recording separated by file
-        self.sequences_indexes = list()
-
-        for fi in range(len(self.file_indexes)):
-
-            # List to store the sequences of a single recording file
-            file_sequences = list()
-
-            for t in self.file_indexes[fi]:
-                
-                label = self.labels[fi][t + (self.timesteps + 1) * self.sample_shift - 1]
-                num_sequences_per_class[label] += 1
-
-                file_sequences.append((t, label))
-            #
-            self.sequences_indexes.append(file_sequences)
-        #
-
-        num_sequences = sum(num_sequences_per_class)
-        self.num_batches = num_sequences // self.batch_size
-        if num_sequences % self.batch_size != 0:
-            self.num_batches += 1
-        #
-
-        # Divide self.sequences_indexes values in batches
-        temp_sequences_indexes = list()
-        for fi in range(len(self.sequences_indexes)):
-            aux_list = list()
-            j = 0
-            while j < len(self.sequences_indexes[fi]):
-                aux_list.append(self.sequences_indexes[fi][j : j+batch_size])
-                j += batch_size
-
-            temp_sequences_indexes.append(aux_list)
-
-        self.sequences_indexes = temp_sequences_indexes
-
-
-        self.input_shape = (self.window_length, )
-
-        print('Signals loaded!')
-        print('\n-----------------------------------------------------------\n')
-        print(f'Number of seizures available: {self.num_seizures}')
-        #if self.num_seizures < 3:
-        #    raise Exception('Not enough seizures, please try other patient.')
-
-        print(f'Number of samples (not sequences): {num_ictal + num_interictal}')
-        print(f'Interictal samples: {num_interictal} ({(num_interictal / (num_ictal + num_interictal) * 100):.2f} %)')
-        print(f'Ictal samples: {num_ictal} ({(num_ictal / (num_ictal + num_interictal) * 100):.2f} %)')
-
-        print(f'\nNumber of sequences: {num_sequences}')
-        print(f'Interictal sequences: {num_sequences_per_class[0]} ({num_sequences_per_class[0] / num_sequences * 100.0 :.2f}%)')
-        print(f'Ictal sequences: {num_sequences_per_class[1]} ({num_sequences_per_class[1] / num_sequences * 100.0 :.2f}%)')
-        print(f'Number of batches: {self.num_batches}')
-        print('\n-----------------------------------------------------------\n')
-
-
-        # Standard scaling
-        print('Loading statistics to scale the data...')
-        array = numpy.load(f'stats/statistics_detection_raw_{patient_id}.npy')
-        self.mean = array[0]
-        self.std = array[1]
-        #
-        del array
-        gc.collect()
-        #
-        #self.shuffle_data()
-
-
-    def __len__(self):
-        '''
-        Returns the number of batches available in the current object.
-
-        :param self: Reference to the current object.
-
-        :return: The number of batches available in the current object.
-        '''
-        
-        return self.num_batches
-    
-
-    def __getitem__(self, index : tuple):
-        '''
-        Returns the batch of samples specified by the index.
-
-        :param self: Reference to the current object.
-
-        :param tuple index: Index of the batch to retrieve. 
-            (file_index, batch_index)
-
-        :return: A tuple with two objects, a batch of samples and the corresponding labels.
-        '''
-        
-        X = list()
-        Y = list()
-
-        fi, batch_index = index
-
-        data_indexes = self.sequences_indexes[fi][batch_index]
-
-
-        for sequence in data_indexes:
-
-            t, label = sequence
-
-            sequence_samples = list()
-            
-            for i in numpy.arange(t, t + (self.timesteps + 1) * self.sample_shift, step = self.sample_shift):
-                sequence_samples.append(self.data[fi][i : i + self.sampling_rate, :])
-            #
-
-            X.append(sequence_samples)
-            Y.append(label)
-        #
-
-        #
-        X = numpy.array(X, dtype=numpy.float64)
-        Y = numpy.array(Y, dtype=numpy.float64)
-
-        X = (X - self.mean) / self.std
-        
-        if X.min() < -20. or X.max() > 20.:
-            #print("#  ", file = sys.stderr)
-            #print("#  WARNING: too large values after scaling while getting batch %d" % batch_index, file = sys.stderr)
-            #print("#  min value = %g" % X.min(), file = sys.stderr)
-            #print("#  max value = %g" % X.max(), file = sys.stderr)
-            X = numpy.minimum(X,  20.)
-            X = numpy.maximum(X, -20.)
-            #print("#  values of all the samples in this batch clipped, current limits are [%f, %f]" % (X.min(), X.max()), file = sys.stderr)
-            #print("#  ", file = sys.stderr)
-        #
-
-        return X, Y
-
-
-
-
-
-
 #-------------------------------------------------------------------------------
 
 
@@ -673,34 +408,18 @@ class RawRecurrentDataGenerator_Test:
 if __name__=='__main__':
 
 
-    #dg = RawRecurrentDataGenerator(index_filenames=['indexes_detection/chb01/test.txt'],
-    #                      window_length = 1, # in seconds
-    #                      shift = 0.5, # in seconds
-    #                      timesteps = 19, # in seconds
-    #                      sampling_rate = 256, # in Hz
-    #                      batch_size = 10,
-    #                      do_standard_scaling = True,
-    #                      in_training_mode = True,
-    #                      balance_batches = True,
-    #                      patient_id='chb01')
-
-    dg_test = RawRecurrentDataGenerator_Test(index_filenames=['../indexes_detection/chb05/test.txt'],
+    dg = RawRecurrentDataGenerator(index_filenames=['indexes_detection/chb01/test.txt'],
                           window_length = 1, # in seconds
                           shift = 0.5, # in seconds
                           timesteps = 19, # in seconds
                           sampling_rate = 256, # in Hz
                           batch_size = 10,
-                          patient_id='chb05')
-    
+                          do_standard_scaling = True,
+                          in_training_mode = True,
+                          balance_batches = True,
+                          patient_id='chb01')
 
-    #for i in tqdm(range(len(dg))):
-    #    x, y = dg[i]
-    #    print(x.shape, y.shape)
-    #    #print(y)
-
-    # For each recording
-    for fi in tqdm(range(len(dg_test.sequences_indexes))):
-        
-        for batch in range(len(dg_test.sequences_indexes[fi])):
-
-            x, y = dg_test[fi, batch]
+    for i in tqdm(range(len(dg))):
+        x, y = dg[i]
+        print(x.shape, y.shape)
+        #print(y)

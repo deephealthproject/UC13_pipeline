@@ -4,11 +4,10 @@ in the Use Case 13 of DeepHealth project.
 """
 import gc
 import os
-import sys
 import numpy
 from random import shuffle
 from tqdm import tqdm
-from file_utils import load_file
+from utils.file_utils import load_file
 
 
 #-------------------------------------------------------------------------------
@@ -111,7 +110,7 @@ class RawRecurrentDataGenerator:
         num_ictal = 0
         num_interictal = 0
 
-        print("Loading EDF signals...", file=sys.stderr)
+        print("Loading EDF signals...")
         for i in tqdm(range(len(self.filenames))):
             d_p = load_file(self.filenames[i],
                             exclude_seizures = False,
@@ -199,21 +198,21 @@ class RawRecurrentDataGenerator:
 
         self.input_shape = (self.window_length, )
 
-        print('Signals loaded!', file=sys.stderr)
-        print('\n-----------------------------------------------------------\n', file=sys.stderr)
-        print(f'Number of seizures available: {self.num_seizures}', file=sys.stderr)
+        print('Signals loaded!')
+        print('\n-----------------------------------------------------------\n')
+        print(f'Number of seizures available: {self.num_seizures}')
         #if self.num_seizures < 3:
         #    raise Exception('Not enough seizures, please try other patient.')
 
-        print(f'Number of samples (not sequences): {num_ictal + num_interictal}', file=sys.stderr)
-        print(f'Interictal samples: {num_interictal} ({(num_interictal / (num_ictal + num_interictal) * 100):.2f} %)', file=sys.stderr)
-        print(f'Ictal samples: {num_ictal} ({(num_ictal / (num_ictal + num_interictal) * 100):.2f} %)', file=sys.stderr)
+        print(f'Number of samples (not sequences): {num_ictal + num_interictal}')
+        print(f'Interictal samples: {num_interictal} ({(num_interictal / (num_ictal + num_interictal) * 100):.2f} %)')
+        print(f'Ictal samples: {num_ictal} ({(num_ictal / (num_ictal + num_interictal) * 100):.2f} %)')
 
-        print(f'\nNumber of sequences: {num_sequences}', file=sys.stderr)
-        print(f'Interictal sequences: {num_sequences_per_class[0]} ({num_sequences_per_class[0] / num_sequences * 100.0 :.2f}%)', file=sys.stderr)
-        print(f'Ictal sequences: {num_sequences_per_class[1]} ({num_sequences_per_class[1] / num_sequences * 100.0 :.2f}%)', file=sys.stderr)
-        print(f'Number of batches: {self.num_batches}', file=sys.stderr)
-        print('\n-----------------------------------------------------------\n', file=sys.stderr)
+        print(f'\nNumber of sequences: {num_sequences}')
+        print(f'Interictal sequences: {num_sequences_per_class[0]} ({num_sequences_per_class[0] / num_sequences * 100.0 :.2f}%)')
+        print(f'Ictal sequences: {num_sequences_per_class[1]} ({num_sequences_per_class[1] / num_sequences * 100.0 :.2f}%)')
+        print(f'Number of batches: {self.num_batches}')
+        print('\n-----------------------------------------------------------\n')
 
 
         # Standard scaling
@@ -222,7 +221,7 @@ class RawRecurrentDataGenerator:
             os.makedirs('stats', exist_ok=True)
 
             if self.in_training_mode:
-                print('Calculating statistics to scale the data...', file=sys.stderr)
+                print('Calculating statistics to scale the data...')
                 means = []
                 counts = []
                 stddevs = []
@@ -247,7 +246,7 @@ class RawRecurrentDataGenerator:
                 
             #
             else:
-                print('Loading statistics to scale the data...', file=sys.stderr)
+                print('Loading statistics to scale the data...')
                 array = numpy.load(f'stats/statistics_detection_raw_{patient_id}.npy')
                 self.mean = array[0]
                 self.std = array[1]

@@ -34,21 +34,19 @@ def main(args):
     index_training = [args.index]
     index_validation = [args.index_val]
     patient_id = args.id
-    model_id = args.model
+    model_id = args.model    
     epochs = args.epochs
     batch_size = args.batch_size
     resume_dir = args.resume
     starting_epoch = args.starting_epoch
     gpus = args.gpus
-    initial_lr = args.lr
-    optimizer = args.opt
     
     model_checkpoint = None
 
     # Create dirs for the experiment
     if resume_dir is None:
         os.makedirs('experiments', exist_ok=True)
-        exp_name = f'detection_recurrent_{patient_id}_{model_id}_{optimizer}_{initial_lr}'
+        exp_name = f'detection_recurrent_{patient_id}_LSTM'
         exp_dir = f'experiments/{exp_name}'
         os.makedirs(exp_dir, exist_ok=False)
         os.makedirs(exp_dir + '/models')
@@ -66,28 +64,29 @@ def main(args):
 
     
     log_file = open(f'{exp_dir}/training_log.txt', 'w')
-    log_file.write("epoch, train_loss, train_acc, val_acc_single_channel, val_f1score_single_channel, val_acc, val_f1score\n")
+    log_file.write('epoch, train_loss, train_acc, val_acc_single_channel,'
+        + ' val_f1score_single_channel, val_acc, val_f1score\n')
     log_file.flush()
 
     # Data Generator Object for training
-    print('\n\nCreating Training Data Generator...')
+    print('\n\nCreating Training Data Generator...', file=sys.stderr)
     dg = RawRecurrentDataGenerator(index_filenames=index_training,
-                          window_length = 1, # in seconds
-                          shift = 0.5, # in seconds
-                          timesteps = 19, # in seconds
-                          sampling_rate = 256, # in Hz
-                          batch_size = batch_size,
-                          in_training_mode = True,
-                          balance_batches = True,
+                          window_length=args.window_length, # in seconds
+                          shift=args.shift, # in seconds
+                          timesteps=args.timesteps, # in seconds
+                          sampling_rate=256, # in Hz
+                          batch_size=batch_size,
+                          in_training_mode=True,
+                          balance_batches=True,
                           patient_id=patient_id)
     #
 
-    print('\n\nCreating Validation Data Generator...')
+    print('\n\nCreating Validation Data Generator...', file=sys.stderr)
     dg_val = RawRecurrentDataGenerator(index_filenames=index_validation,
-                          window_length = 1,
-                          shift = 0.5, 
-                          timesteps = 19,
-                          sampling_rate = 256, # in Hz
+                          window_length=args.window_length,
+                          shift=args.shift, 
+                          timesteps=args.timesteps,
+                          sampling_rate=256, # in Hz
                           batch_size=batch_size,
                           in_training_mode=False,
                           patient_id=patient_id)
@@ -97,8 +96,6 @@ def main(args):
                        dg.input_shape,
                        num_classes=2,
                        filename=model_checkpoint,
-                       lr = initial_lr,
-                       opt = optimizer,
                        gpus=gpus)
     #
 
@@ -127,26 +124,16 @@ def main(args):
 
             for channel in range(x.shape[3]):
                 x_channel = x[:, :, :, channel]
-                #print(x_channel.shape)
+                
                 channel_tensor_batch = Tensor.fromarray(x_channel)
                 # Forward and backward of the channel through the net
                 eddl.train_batch(net, [channel_tensor_batch], [y])
 
                 losses = eddl.get_losses(net)
+                #metrics = eddl.get_metrics(net)
 
                 pbar.set_description(f'Training[loss={losses[0]:.5f}, acc=Not Available]')
 
-                #eddl.print_loss(net, i)
-                #print('\r', end='')
-
-            # Get current metrics
-            
-            #metric = eddl.getMetric('categorical_accuracy')
-            #print(metric.value(channel_tensor_batch, y))
-            
-            #metrics = eddl.get_metrics(net)
-            #print(losses, metrics)
-            
         print()
 
 
@@ -162,19 +149,17 @@ def main(args):
 
         for j in tqdm(range(len(dg_val))):
             x, y = dg_val[j]
-            #print(x.shape, y.shape)
             
             channels_y_pred = list()
             for channel in range(x.shape[3]):
                 x_channel = x[:, :, :, channel]
-                #print(x_channel.shape)
+
                 channel_tensor_batch = Tensor.fromarray(x_channel)
                 # Forward and backward of the channel through the net
                 (y_pred, ) = eddl.predict(net, [channel_tensor_batch])
 
                 y_pred = y_pred.getdata()
                 
-                #print(y_pred.getdata().shape)
                 channels_y_pred.append(y_pred)
                 Y_pred_single_channel += y_pred.argmax(axis=1).tolist()
                 Y_true_single_channel += y.tolist()
@@ -182,6 +167,7 @@ def main(args):
             channels_y_pred = numpy.array(channels_y_pred)
             # (23, batch_size, 2)
             channels_y_pred = numpy.sum(channels_y_pred, axis=0)
+            channels_y_pred = channels_y_pred / 23.0
             # print(channels_y_pred.shape) -> (batch_size, 2)
             
             Y_true += y.tolist()
@@ -205,7 +191,7 @@ def main(args):
         print(f'Validation macro f1-score : {fscore_single_channel}', file=sys.stderr)
         print('Confussion matrix:', file=sys.stderr)
         print(f'{cnf_matrix}\n', file=sys.stderr)
-        print('Classification report:')
+        print('Classification report:', file=sys.stderr)
         print(report, file=sys.stderr)
 
         print('\n--------------------------------------------------------------\n', file=sys.stderr)
@@ -220,11 +206,11 @@ def main(args):
         print(f'Validation macro f1-score : {fscore}', file=sys.stderr)
         print('Confussion matrix:', file=sys.stderr)
         print(f'{cnf_matrix}\n', file=sys.stderr)
-        print('Classification report:')
+        print('Classification report:', file=sys.stderr)
         print(report, file=sys.stderr)
         print('***************************************************************\n\n', file=sys.stderr)
 
-        log_file.write('%d,%d,%g,%g,%g,%g,%g\n' % (epoch, losses[0], -1,
+        log_file.write('%d,%d,%g,%g,%g,%g,%g\n' % (epoch, -1, losses[0],
             val_accuracy_single_channel, fscore_single_channel,
             val_accuracy, fscore))
 
@@ -257,8 +243,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--id', help='Id of the patient.', required=True)
 
-    parser.add_argument('--model', help='Model id to use: "lstm", "gru".',
-                         default='lstm')
+    parser.add_argument('--model', help='Model identifier.', default='1')
 
     parser.add_argument('--epochs', type=int, help='Number of epochs to' +
          ' perform.', default=1)
@@ -269,12 +254,20 @@ if __name__ == '__main__':
     parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
         ' Usage "--gpus 1 1" (two GPUs)', nargs="+", default=[1], type=int)
 
-    parser.add_argument('--lr', type=float, help='Initial learning rate. Default -> 0.0001',
-        default=0.0001)
 
-    parser.add_argument('--opt', help='Optimizer: "adam", "sgd". Default -> adam',
-        default='adam')
+    # Arguments of the data generator
+    parser.add_argument('--window-length', type=float, help='Window length '
+    + ' in seconds. Default -> 1', default=1)
 
+    parser.add_argument('--shift', type=float, help='Window shift '
+    + ' in seconds. Default -> 0.5', default=0.5)
+
+    parser.add_argument('--timesteps', type=int, help='Timesteps to use as a '
+    + ' sequence. Default -> 19', default=19)
+
+
+
+    # Arguments to resume an experiment
     parser.add_argument('--resume', help='Directory of the experiment dir to resume.',
                 default=None)
 

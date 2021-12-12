@@ -3,7 +3,7 @@
     the detection of Epilepsy Seizures on a EEG signal. This task is part of the
     Use Case 13 of DeepHealth project. 
 
-    This script uses pyEDDL library to test the neural network models.
+    This script uses Keras toolkit to test the neural network models.
 
     Authors:
         DeepHealth team @ PRHLT, UPV
@@ -14,10 +14,12 @@ import sys
 import argparse
 from tqdm import tqdm
 import numpy
-from models import create_model
+from models_keras import create_model
 from data_utils_detection import RawRecurrentDataGenerator
-from pyeddl import eddl
-from pyeddl.tensor import Tensor
+import tensorflow as tf
+from tensorflow import keras
+import tensorflow.keras.backend as K
+from tensorflow.keras.optimizers import Adam, SGD
 from sklearn.metrics import f1_score, confusion_matrix, classification_report
 
 
@@ -225,17 +227,10 @@ def main(args):
 
     print(f'Evaluating best model with the test set -> {best_model_name}', file=sys.stderr)
 
-    model_filename = os.path.join(model_dir, best_model_name)
-
-    # Load the model in the eddl
+    # Load the model
     print('Loading the model...', file=sys.stderr)
-    net = create_model(model_id=model_id,
-                       input_shape=None, # Not needed if we are loading
-                       num_classes=2,
-                       filename=model_filename,
-                       gpus=gpus)
+    net = keras.models.load_model(os.path.join(model_dir, best_model_name))
     #
-
 
     # Get predictions for the test set with the best model
     print('Testing the model with the test signals...', file=sys.stderr)
@@ -251,12 +246,9 @@ def main(args):
         for channel in range(x.shape[3]):
             x_channel = x[:, :, :, channel]
 
-            channel_tensor_batch = Tensor.fromarray(x_channel)
             # Forward and backward of the channel through the net
-            (y_pred, ) = eddl.predict(net, [channel_tensor_batch])
+            y_pred = net.predict(x_channel)
 
-            y_pred = y_pred.getdata()
-            
             channels_y_pred.append(y_pred)
             Y_pred_single_channel += y_pred.argmax(axis=1).tolist()
             Y_true_single_channel += y.tolist()
@@ -342,13 +334,13 @@ if __name__ == '__main__':
         + 'returning the obtained metrics.', 
         formatter_class=argparse.RawTextHelpFormatter)
 
-    parser.add_argument('--index', help='Index filename to use for test.',
-                        required=True)
+    parser.add_argument('--index', help='Index of recordings to use for testing. ' + 
+                        'Example: "../indexes_detection/chb01/test.txt"')
 
-    parser.add_argument('--id', help='Id of the patient.', required=True)
+    parser.add_argument('--id', help='Id of the patient, e.g. "chb01".', required=True)
 
-    parser.add_argument('--model', help='Model identifier. "lstm" "gru"',
-                        required=True)
+    parser.add_argument('--model', help='Model id to use: "lstm", "gru".',
+                         default='lstm')
 
     parser.add_argument('--dir', help='Directory of the experiment dir to test.'
                 + ' Example: experiments/detection_recurrent_chb01_LSTM/',
@@ -357,8 +349,9 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', type=int, help='Batch size.',
         default=10)
 
-    parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
-        ' Usage "--gpus 1 1" (two GPUs)', nargs="+", default=[1], type=int)
+    parser.add_argument('--gpu', help='Id of the gpu to use.'+ 
+        ' Usage --gpu 0', default='0')
+
 
     # Args for the alarm function
     parser.add_argument('--sample-shift', type=float, help='Sample shift used'

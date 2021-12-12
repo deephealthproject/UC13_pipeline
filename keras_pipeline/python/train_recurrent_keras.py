@@ -28,13 +28,6 @@ from tensorflow.keras.optimizers import Adam, SGD
 from sklearn.metrics import confusion_matrix, classification_report, f1_score
 
 
-# GLOBAL PARAMETERS
-window_length = 1   # in seconds
-shift = 0.5         # in seconds
-timesteps = 19      # in seconds
-sampling_rate = 256 # in Hz
-
-
 
 def main(args):
     index_training = [args.index]
@@ -71,7 +64,9 @@ def main(args):
         # Create dir for the experiment
         os.makedirs('keras_experiments', exist_ok=True)
         
-        exp_dir = os.path.join('keras_experiments' , f'detection_recurrent_{patient_id}_{model_id}_{opt}_{initial_lr}')
+        exp_dir = os.path.join('keras_experiments' ,
+                f'detection_recurrent_{patient_id}_{model_id}_{opt}_{initial_lr}')
+
         exp_time = datetime.now().strftime("%d-%b_%H:%M")
         exp_dir = f'{exp_dir}_{exp_time}'
         os.makedirs(exp_dir)
@@ -83,30 +78,29 @@ def main(args):
     
     
     # Create data generator objects
-    
-    # Training
-    print('\n\nCreating Training Data Generator...')
-    dg = RawRecurrentDataGenerator( index_filenames=index_training,
-                                    window_length=window_length,
-                                    shift=shift,
-                                    timesteps=timesteps,
-                                    sampling_rate=sampling_rate,
-                                    batch_size=batch_size,
-                                    in_training_mode=True,
-                                    balance_batches=True,
-                                    patient_id=patient_id )
+
+    # Data Generator Object for training
+    print('\n\nCreating Training Data Generator...', file=sys.stderr)
+    dg = RawRecurrentDataGenerator(index_filenames=index_training,
+                          window_length=args.window_length, # in seconds
+                          shift=args.shift, # in seconds
+                          timesteps=args.timesteps, # in seconds
+                          sampling_rate=256, # in Hz
+                          batch_size=batch_size,
+                          in_training_mode=True,
+                          balance_batches=True,
+                          patient_id=patient_id)
     #
 
-    # Validation
-    print('\n\nCreating Validation Data Generator...')
-    dg_val = RawRecurrentDataGenerator( index_filenames=index_validation,
-                                        window_length=window_length,
-                                        shift=shift,
-                                        timesteps=timesteps,
-                                        sampling_rate=sampling_rate,
-                                        batch_size=batch_size,
-                                        in_training_mode=False,
-                                        patient_id=patient_id )
+    print('\n\nCreating Validation Data Generator...', file=sys.stderr)
+    dg_val = RawRecurrentDataGenerator(index_filenames=index_validation,
+                          window_length=args.window_length,
+                          shift=args.shift, 
+                          timesteps=args.timesteps,
+                          sampling_rate=256, # in Hz
+                          batch_size=batch_size,
+                          in_training_mode=False,
+                          patient_id=patient_id)
 
 
     # Get input shape
@@ -127,7 +121,7 @@ def main(args):
         elif opt == 'sgd':
             optimizer = SGD(learning_rate=initial_lr)
         else:
-            raise Exception(f'Wrong argument for learning rate (--lr), check help with -h.')
+            raise Exception(f'Wrong optimizer name, check help with -h.')
 
 
         model.compile(optimizer=optimizer,
@@ -171,7 +165,6 @@ def main(args):
 
             for channel in range(x.shape[3]):
                 x_channel = x[:, :, :, channel]
-                #print(x_channel.shape)
                 
                 # Forward and backward of the channel through the net
                 outputs = model.train_on_batch(x_channel, y=y, reset_metrics=False)
@@ -202,13 +195,12 @@ def main(args):
             channels_y_pred = list()
             for channel in range(x.shape[3]):
                 x_channel = x[:, :, :, channel]
-                #print(x_channel.shape)
-                #channel_tensor_batch = K.constant(x_channel)
+
                 # Forward and backward of the channel through the net
                 y_pred = model.predict(x_channel)
 
                 accumulated_loss += keras.losses.CategoricalCrossentropy()(y, y_pred)
-                #print(y_pred.shape)
+
                 channels_y_pred.append(y_pred)
                 Y_pred_single_channel += y_pred.argmax(axis=1).tolist()
                 Y_true_single_channel += y.argmax(axis=1).tolist()
@@ -216,6 +208,7 @@ def main(args):
             channels_y_pred = numpy.array(channels_y_pred)
             # (23, batch_size, 2)
             channels_y_pred = numpy.sum(channels_y_pred, axis=0)
+            channels_y_pred = channels_y_pred / 23.0
             # print(channels_y_pred.shape) -> (batch_size, 2)
             
             Y_true += y.argmax(axis=1).tolist()
@@ -228,13 +221,14 @@ def main(args):
         y_pred_single_channel = numpy.array(Y_pred_single_channel) * 1.0
 
         # Calculate validation loss
-        val_loss = accumulated_loss / (len(dg_val) * 23)
+        val_loss = accumulated_loss / len(dg_val)
 
         # Calculate other metrics
         val_accuracy_single_channel = sum(y_true_single_channel == y_pred_single_channel) / len(y_true_single_channel)
         cnf_matrix = confusion_matrix(y_true_single_channel, y_pred_single_channel)
         report = classification_report(y_true_single_channel, y_pred_single_channel)
         fscore_single_channel = f1_score(y_true_single_channel, y_pred_single_channel, labels=[0, 1], average='macro')
+        
         
         print('***************************************************************\n', file=sys.stderr)
         print(f'Epoch {epoch + 1}: Validation results\n', file=sys.stderr)
@@ -317,6 +311,20 @@ if __name__ == '__main__':
     parser.add_argument('--gpu', help='Id of the gpu to use.'+ 
         ' Usage --gpu 0', default='0')
 
+
+    # Arguments of the data generator
+    parser.add_argument('--window-length', type=float, help='Window length '
+    + ' in seconds. Default -> 1', default=1)
+
+    parser.add_argument('--shift', type=float, help='Window shift '
+    + ' in seconds. Default -> 0.5', default=0.5)
+
+    parser.add_argument('--timesteps', type=int, help='Timesteps to use as a '
+    + ' sequence. Default -> 19', default=19)
+
+
+
+    # Arguments to resume an experiment
     parser.add_argument('--resume', help='Directory of the experiment dir to resume.',
                 default=None)
 
