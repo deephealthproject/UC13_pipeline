@@ -251,10 +251,10 @@ if __name__ == '__main__':
                          default='lstm')
 
     parser.add_argument('--epochs', type=int, help='Number of epochs to' +
-         ' perform.', default=1)
+         ' perform.', default=10)
     
     parser.add_argument('--batch-size', type=int, help='Batch size.',
-        default=10)
+        default=64)
 
     parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
         ' Usage "--gpus 1 1" (two GPUs)', nargs="+", default=[1], type=int)
@@ -265,15 +265,6 @@ if __name__ == '__main__':
     parser.add_argument('--opt', help='Optimizer: "adam", "sgd". Default -> adam',
         default='adam')
 
-    # Arguments of the data generator
-    parser.add_argument('--window-length', type=float, help='Window length '
-    + ' in seconds. Default -> 1', default=1)
-
-    parser.add_argument('--shift', type=float, help='Window shift '
-    + ' in seconds. Default -> 0.5', default=0.5)
-
-    parser.add_argument('--timesteps', type=int, help='Timesteps to use as a '
-    + ' sequence. Default -> 19', default=19)
 
 
 

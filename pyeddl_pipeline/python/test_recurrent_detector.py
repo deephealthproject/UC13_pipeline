@@ -87,8 +87,6 @@ def calculate_detection_metrics(y_true,
     current_state = y_pred[sliding_window_length-1] # 0 for normal, 1 for ictal
     predicted = False # To only predict each seizure once
 
-    seizure_len = 0
-
     # Iterate over y_pred
     for i in range(sliding_window_length, len(y_pred)):
 
@@ -197,9 +195,9 @@ def main(args):
     # Create Data Generator object for the test set
     print('Creating Test Data Generator...', file=sys.stderr)
     dg_test = RawRecurrentDataGenerator(index_filenames=index_test,
-                          window_length = 1,
-                          shift = 0.5, 
-                          timesteps = 19,
+                          window_length = args.window_length,
+                          shift = args.shift, 
+                          timesteps = args.timesteps,
                           sampling_rate = 256, # in Hz
                           batch_size=batch_size,
                           in_training_mode=False,
@@ -315,7 +313,7 @@ def main(args):
                                         y_true,
                                         y_pred,
                                         sample_shift=args.sample_shift,
-                                        sliding_window_length=args.window_length,
+                                        sliding_window_length=args.inference_window,
                                         alpha_pos=args.alpha_pos,
                                         alpha_neg=args.alpha_neg,
                                         detection_threshold=args.detection_threshold
@@ -350,21 +348,28 @@ if __name__ == '__main__':
     parser.add_argument('--model', help='Model identifier. "lstm" "gru"',
                         required=True)
 
-    parser.add_argument('--dir', help='Directory of the experiment dir to test.'
+    parser.add_argument('--dir', help='Directory of the experiment to test.'
                 + ' Example: experiments/detection_recurrent_chb01_LSTM/',
                 required=True)
 
     parser.add_argument('--batch-size', type=int, help='Batch size.',
-        default=10)
+        default=64)
 
     parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
         ' Usage "--gpus 1 1" (two GPUs)', nargs="+", default=[1], type=int)
 
-    # Args for the alarm function
-    parser.add_argument('--sample-shift', type=float, help='Sample shift used'
-        + 'when training the data (in seconds). Default -> 0.5', default=0.5)
+    # Arguments of the data generator
+    parser.add_argument('--window-length', type=float, help='Window length '
+    + ' in seconds. Default -> 1', default=1)
 
-    parser.add_argument('--window-length', type=int, help='Length of the '
+    parser.add_argument('--shift', type=float, help='Window shift '
+    + ' in seconds. Default -> 0.5', default=0.5)
+
+    parser.add_argument('--timesteps', type=int, help='Timesteps to use as a '
+    + ' sequence. Default -> 19', default=19)
+
+    # Args for the alarm function
+    parser.add_argument('--inference-window', type=int, help='Length of the '
         + 'sliding window to use after inferencing with the RNN. Default -> 20',
         default=20)
 
