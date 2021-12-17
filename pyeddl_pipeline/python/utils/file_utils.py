@@ -310,44 +310,29 @@ def load_file(filename, exclude_seizures = False,
 
     data_pieces = list()
     if separate_seizures and episodes is not None:
-        label = 0 # no seizure, set to 1 for seizures
         i0 = 0
         for boundaries in episodes:
             i1 = boundaries[0]
+
+            # we are in LABEL 0 (no ICTAL periods)
             _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
-            _label = label
+            data_pieces.append((_signal, 0))
 
-            # Label should be 0 here
-            #print('LABEL 0 ', label)
-            if label == 0:
-                data_pieces.append((_signal, _label))
-            elif label == 1 and not exclude_seizures:
-                data_pieces.append((_signal, _label))
-
-
-            label = (label + 1) % 2
+            # we are in LABEL 1 (ICTAL periods)
             i0 = boundaries[0]
             i1 = boundaries[1]
-            _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
-            _label = label
-
-            #print('LABEL 1 ', label)
-            # Label should be 1 here
-            if label == 0:
-                data_pieces.append((_signal, _label))
-            elif label == 1 and not exclude_seizures:
-                data_pieces.append((_signal, _label))
+            if not exclude_seizures:
+                _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
+                data_pieces.append((_signal, 1))
             
-            # Update indexes and label
-            i0 = boundaries[1]
-            label = (label + 1) % 2
+            # Update indexes
+            i0 = i1 + 1
 
         # Add last part of the signal
+        # we are in LABEL 0 (no ICTAL periods)
         i1 = len(signal_dict[signal_ids[0]])
         _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
-        _label = label
-        if label == 0 or not exclude_seizures:
-            data_pieces.append((_signal, _label))
+        data_pieces.append((_signal, 0))
 
     else:
         # Do not separate any seizure, just return the entire signal

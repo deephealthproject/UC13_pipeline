@@ -7,7 +7,7 @@ import os
 import numpy
 from random import shuffle
 from tqdm import tqdm
-from utils.file_utils import load_file
+from utils.file_utils import load_file, load_file_old
 
 
 #-------------------------------------------------------------------------------
@@ -116,7 +116,7 @@ class RawRecurrentDataGenerator:
                             exclude_seizures = False,
                             do_preemphasis = False,
                             separate_seizures = True,
-                            verbose = 0)
+                            verbose = 2)
 
             len_file = 0
 
@@ -408,7 +408,7 @@ class RawRecurrentDataGenerator:
 if __name__=='__main__':
 
 
-    dg = RawRecurrentDataGenerator(index_filenames=['indexes_detection/chb01/test.txt'],
+    dg = RawRecurrentDataGenerator(index_filenames=['../indexes_detection/chb12/validation.txt'],
                           window_length = 1, # in seconds
                           shift = 0.5, # in seconds
                           timesteps = 19, # in seconds
@@ -417,7 +417,7 @@ if __name__=='__main__':
                           do_standard_scaling = True,
                           in_training_mode = True,
                           balance_batches = True,
-                          patient_id='chb01')
+                          patient_id = 'chb02')
 
     for i in tqdm(range(len(dg))):
         x, y = dg[i]
