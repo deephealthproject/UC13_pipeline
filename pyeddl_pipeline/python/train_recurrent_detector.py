@@ -140,6 +140,7 @@ def main(args):
 
         print()
 
+        training_loss = losses[0]
 
         
         # VALIDATION
@@ -214,7 +215,7 @@ def main(args):
         print(report, file=sys.stderr)
         print('***************************************************************\n\n', file=sys.stderr)
 
-        log_file.write('%d,%d,%g,%g,%g,%g,%g\n' % (epoch, losses[0], -1,
+        log_file.write('%d,%d,%g,%g,%g,%g,%g\n' % (epoch, training_loss, -1,
             val_accuracy_single_channel, fscore_single_channel,
             val_accuracy, fscore))
 
@@ -265,8 +266,15 @@ if __name__ == '__main__':
     parser.add_argument('--opt', help='Optimizer: "adam", "sgd". Default -> adam',
         default='adam')
 
+    # Arguments of the data generator
+    parser.add_argument('--window-length', type=float, help='Window length '
+    + ' in seconds. Default -> 1', default=1)
 
+    parser.add_argument('--shift', type=float, help='Window shift '
+    + ' in seconds. Default -> 0.5', default=0.5)
 
+    parser.add_argument('--timesteps', type=int, help='Timesteps to use as a '
+    + ' sequence. Default -> 19', default=19)
 
     # Arguments to resume an experiment
     parser.add_argument('--resume', help='Directory of the experiment dir to resume.',

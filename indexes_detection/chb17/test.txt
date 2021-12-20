@@ -1,5 +1,5 @@
-../clean_signals/chb17/chb17c_05
-../clean_signals/chb17/chb17c_06
-../clean_signals/chb17/chb17c_07
-../clean_signals/chb17/chb17c_08
-../clean_signals/chb17/chb17b_63
+../../clean_signals/chb17/chb17c_05
+../../clean_signals/chb17/chb17c_06
+../../clean_signals/chb17/chb17c_07
+../../clean_signals/chb17/chb17c_08
+../../clean_signals/chb17/chb17b_63

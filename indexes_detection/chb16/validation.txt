@@ -1,2 +1,2 @@
-../clean_signals/chb16/chb16_08
-../clean_signals/chb16/chb16_16
+../../clean_signals/chb16/chb16_08
+../../clean_signals/chb16/chb16_16
