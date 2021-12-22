@@ -83,7 +83,10 @@ def load_data_one_patient(base_dir = '.',
                         do_preemphasis = do_preemphasis)
 
 
+
 # ------------------------------------------------------------------------------
+
+
 def load_files(filename_list,
                 n_processes = 8,
                 verbose = 0,
@@ -128,115 +131,10 @@ def load_files(filename_list,
     return data_pieces
 
 
-# ------------------------------------------------------------------------------
-def load_file_old(filename, exclude_seizures = False,
-                        do_preemphasis = False,
-                        separate_seizures = True,
-                        verbose = 0):
-    '''
-    Loads the contents of one file.
-
-    :param str filename:
-        Name of the file from which to load data.
-
-    :param boolean exclude_seizures:
-        To indicate whether subsequences corresponding to seizures must be skipped.
-
-    :param boolean do_preemphasis:
-        To indicate whether FIR preemphasis filter must be applied.
-
-    :param boolean separate_seizures:
-        To indicate whether split the signal into pieces to isolate
-        subsequences corresponding to seizures.
-
-    :param int verbose:
-        Level of verbosity.
-
-    :return: A list with the sequences of vectors with channels.
-             Each element in the list correspond to a change in
-             the label, no seizures imply a single sequence.
-    '''
-    #
-    if verbose > 0:
-        print('loading', filename,
-                'excluding seizures:',exclude_seizures,
-                'applying a preemphasis filter:', do_preemphasis)
-    #
-    signal_dict = decompress_pickle(filename)
-    if signal_dict is None:
-        return None
-    metadata = signal_dict.get('metadata')
-    if verbose > 1:
-        print(signal_dict.keys())
-        print(metadata.keys())
-
-    signal_ids = metadata['channels']
-    try:
-        num_seizures = metadata['seizures']
-    except:
-        num_seizures = 0
-    try:
-        episodes = metadata['times']
-    except:
-        episodes = None
-
-    if episodes is not None and len(episodes) > 0:
-        episodes.sort(key = lambda a: a[0], reverse = True)
-
-    if verbose > 1:
-        print(signal_ids)
-        print(num_seizures)
-        print(episodes)
-
-    if do_preemphasis:
-        alpha = 0.98
-        for key in signal_ids:
-            x = signal_dict[key].copy()
-            '''
-            previous_value = x[0]
-            for i in range(1, len(x)):
-                temp = x[i]
-                x[i] = x[i] - alpha * previous_value
-                previous_value = temp
-            '''
-            signal_dict[key][1:] = x[1:] - alpha * x[:-1]
-            signal_dict[key][0] = 0
-
-    data_pieces = list()
-    if separate_seizures and episodes is not None:
-        label = 0 # no seizure, set to 1 for seizures
-        i0 = 0
-        for boundaries in episodes:
-            i1 = boundaries[0]
-            _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
-            _label = label
-            label = (label + 1) % 2
-            if label == 0 or not exclude_seizures:
-                data_pieces.append((_signal, _label))
-            i0 = boundaries[1] + 1
-        i1 = len(signal_dict[signal_ids[0]])
-        _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
-        _label = label
-        if label == 0 or not exclude_seizures:
-            data_pieces.append((_signal, _label))
-    else:
-        try:
-            _signal = numpy.array([signal_dict[signal_id][:] for signal_id in signal_ids]).T
-        except:
-            _signal = list()
-            for signal_id in signal_ids:
-                if signal_id in signal_dict.keys():
-                    _signal.append(signal_dict[signal_id][:])
-                else:
-                    sys.stderr.write(f'ERROR: signal id {signal_id} does not exist in {filename}\n')
-                    sys.stderr.flush()
-            _signal = numpy.array(_signal)
-        data_pieces.append((_signal, 0))
-    #
-    return data_pieces
-
 
 # ------------------------------------------------------------------------------
+
+
 def load_file(filename, exclude_seizures = False,
                         do_preemphasis = False,
                         separate_seizures = True,
@@ -309,30 +207,34 @@ def load_file(filename, exclude_seizures = False,
             signal_dict[key][0] = 0
 
     data_pieces = list()
-    if separate_seizures and episodes is not None:
-        i0 = 0
-        for boundaries in episodes:
-            i1 = boundaries[0]
+    if separate_seizures:
+        if episodes is None:
+            _signal = numpy.array([signal_dict[signal_id][:] for signal_id in signal_ids]).T
+            data_pieces.append((_signal, 0))
+        else:
+            i0 = 0
+            for boundaries in episodes:
+                i1 = boundaries[0]
 
+                # we are in LABEL 0 (no ICTAL periods)
+                _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
+                data_pieces.append((_signal, 0))
+
+                # we are in LABEL 1 (ICTAL periods)
+                i0 = boundaries[0]
+                i1 = boundaries[1]
+                if not exclude_seizures:
+                    _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
+                    data_pieces.append((_signal, 1))
+                
+                # Update indexes
+                i0 = i1 + 1
+
+            # Add last part of the signal
             # we are in LABEL 0 (no ICTAL periods)
+            i1 = len(signal_dict[signal_ids[0]])
             _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
             data_pieces.append((_signal, 0))
-
-            # we are in LABEL 1 (ICTAL periods)
-            i0 = boundaries[0]
-            i1 = boundaries[1]
-            if not exclude_seizures:
-                _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
-                data_pieces.append((_signal, 1))
-            
-            # Update indexes
-            i0 = i1 + 1
-
-        # Add last part of the signal
-        # we are in LABEL 0 (no ICTAL periods)
-        i1 = len(signal_dict[signal_ids[0]])
-        _signal = numpy.array([signal_dict[signal_id][i0:i1] for signal_id in signal_ids]).T
-        data_pieces.append((_signal, 0))
 
     else:
         # Do not separate any seizure, just return the entire signal
@@ -347,12 +249,22 @@ def load_file(filename, exclude_seizures = False,
                     sys.stderr.write(f'ERROR: signal id {signal_id} does not exist in {filename}\n')
                     sys.stderr.flush()
             _signal = numpy.array(_signal)
-        data_pieces.append((_signal, 0))
+
+        # Compute the labels
+        labels = numpy.zeros(len(_signal), dtype=int)
+        if episodes is not None:
+            for boundaries in episodes:
+                labels[boundaries[0] : boundaries[1] + 1] = 1
+        else:
+            data_pieces.append((_signal, labels))
     #
     return data_pieces
 
 
+
 # ------------------------------------------------------------------------------
+
+
 def load_file_eeg(filename, verbose = 0):
     '''
     Loads the contents of one file.

@@ -30,9 +30,8 @@ class RawRecurrentDataGenerator:
                  patient_id = None):
         '''
 
-            Constructor to create objects of the class **RawDataProcessor** and load all the data.
-            Future implementations will pave the way to load data from files on-the-fly in order to allow work
-            with large enough datasets.
+            Constructor to create objects of the class 
+            **RawRecurrentDataGenerator** and load all the data.
 
             Parameters
             ----------
@@ -404,11 +403,516 @@ class RawRecurrentDataGenerator:
 #-------------------------------------------------------------------------------
 
 
+class RawDataGenerator:
+    '''
+        Class for preloading data and provide batches.
+    '''
+
+    def __init__(self, index_filenames,
+                 window_length = 1, # in seconds
+                 shift = 0.5, # in seconds
+                 sampling_rate = 256, # in Hz
+                 batch_size=20,
+                 do_standard_scaling=True,
+                 in_training_mode=False,
+                 balance_batches=False,
+                 patient_id=None):
+        '''
+
+            Constructor to create objects of the class **DataGenerator** and
+            loads all the data.
+
+            Parameters
+            ----------
+
+            :param self:
+                Reference to the current object.
+
+            :param list index_filenames:
+                List of index filenames from which to load data filenames.
+
+            :param int window_length:
+                Size in vectors of channels in the signal to compose a
+                single sample.
+
+            :param int shift:
+                Number of vectors of channels from the signal to shift from
+                one sample to the next one in the sequence.
+
+            :param int sampling_rate:
+                Sampling rate of the signals, in Hz.
+
+            :param int batch_size:
+                Number of samples per batch.
+
+            :param boolean do_standard_scaling:
+                Flag to indicate whether to scale each channel to zero
+                mean and unit variance.
+
+            :param boolean in_training_mode:
+                Flag to indicate whether the process is in training mode.
+
+            :param string patient_id:
+                String to indicate the patient id. It is used to save the statistics file.
+
+        '''
+        #
+        self.batch_size = batch_size
+        self.window_length = int(window_length * sampling_rate)
+        self.shift = int(shift * sampling_rate)
+        self.do_standard_scaling = do_standard_scaling
+        self.in_training_mode = in_training_mode
+        self.balance_batches = balance_batches
+        self.patient_id = patient_id
+        #
+        self.filenames = list()
+        for fname in index_filenames:
+            with open(fname, 'r') as f:
+                for l in f:
+                    if l[0] != '#':
+                        self.filenames.append(l.strip() + '.edf.pbz2')
+                f.close()
+        #
+        self.indices = list()
+        self.indices_ictal = list()
+        self.data_pieces = list()
+        data_pieces_index = 0
+
+        self.num_samples = [0, 0] # [class_0, class_1]
+
+        print("Loading EDF signals...")
+        for file_index in tqdm(range(len(self.filenames))):
+            recording = load_file(self.filenames[file_index],
+                            exclude_seizures=False,
+                            do_preemphasis=False,
+                            separate_seizures=True,
+                            verbose=0)
+            
+            if self.in_training_mode and self.balance_batches:
+                # Separate data by label
+                for values, label in recording:
+                    self.data_pieces.append((values, label))
+
+                    if label == 0:
+                        for i in numpy.arange(0, len(values) - self.window_length + 1, step = self.shift):
+                            self.indices.append((data_pieces_index, i))
+                            self.num_samples[0] += 1
+                    else:
+                        for i in numpy.arange(0, len(values) - self.window_length + 1, step = self.shift):
+                            self.indices_ictal.append((data_pieces_index, i))
+                            self.num_samples[1] += 1
+                    #
+                    data_pieces_index += 1
+                #
+            else:
+                # Do not separate data by label
+                for values, label in recording:
+                    self.data_pieces.append((values, label))
+
+                    for i in numpy.arange(0, len(values) - self.window_length + 1, step = self.shift):
+                        self.indices.append((data_pieces_index, i))
+                        self.num_samples[label] += 1
+                    #
+                    data_pieces_index += 1
+                #
+            #
+        #
+        self.total_samples = sum(self.num_samples)
+        self.num_batches = self.total_samples // self.batch_size
+        if self.total_samples % self.batch_size != 0:
+            self.num_batches += 1
+
+        print(f'Total number of samples: {self.total_samples}')
+        
+        print(f'Interictal samples: {self.num_samples[0]} '
+            + f'({self.num_samples[0] / self.total_samples * 100.0:.2f}%)')
+        
+        print(f'Ictal samples: {self.num_samples[1]} '
+            + f'({self.num_samples[1] / self.total_samples * 100.0:.2f}%)')
+        
+        print(f'Number of batches: {self.num_batches}')
+
+        #
+        if self.do_standard_scaling:
+            if self.in_training_mode:
+                means = []
+                counts = []
+                stddevs = []
+                for p, label in self.data_pieces:
+                    means.append(p.mean())
+                    counts.append(len(p))
+                    stddevs.append(p.std())
+                self.mean = sum([m * c for m, c in zip(means, counts)])
+                self.std  = sum([s * c for s, c in zip(stddevs, counts)])
+                self.mean /= sum(counts)
+                self.std  /= sum(counts)
+                #
+                array = numpy.array([self.mean, self.std])
+                numpy.save(f'stats/raw_{self.patient_id}.npy', array)
+                del means
+                del counts
+                del stddevs
+            else:
+                array = numpy.load(f'stats/raw_{self.patient_id}.npy')
+                self.mean = array[0]
+                self.std = array[1]
+            #
+            del array
+        #
+
+
+    def __len__(self):
+        '''
+        Returns the number of batches available in the current object.
+
+        :param self: Reference to the current object.
+
+        :return: The number of batches available in the current object.
+        '''
+        return self.num_batches
+
+
+    def shuffle_data(self):
+        '''
+        Shuffles the data.
+
+        :param self: Reference to the current object.
+        '''
+        #
+        shuffle(self.indices)
+        #
+
+
+    def __getitem__(self, batch_index : int):
+        '''
+        Returns the batch of samples specified by the index.
+
+        :param self: Reference to the current object.
+
+        :param int batch_index: Index of the batch to retrieve.
+
+        :return: A tuple with two objects, a batch of samples and the corresponding labels.
+        '''
+        #
+        X = list()
+        Y = list()
+        #
+        if self.balance_batches:
+            half_batch = self.batch_size // 2
+
+            # Class interictal - 0
+            for sample in range(half_batch):
+                idx = (batch_index * self.batch_size + sample) % len(self.indices)
+                
+                data_pieces_index, index = self.indices[idx]
+                data, label = self.data_pieces[data_pieces_index]
+
+                X.append(data[index : index + self.window_length])
+                Y.append(label)
+
+            # Class ictal - 1
+            for sample in range(half_batch):
+                idx = (batch_index * self.batch_size + sample) % len(self.indices_ictal)
+                
+                data_pieces_index, index = self.indices_ictal[idx]
+                data, label = self.data_pieces[data_pieces_index]
+
+                X.append(data[index : index + self.window_length])
+                Y.append(label)
+
+        else:
+            for sample in range(self.batch_size):
+                idx = (batch_index * self.batch_size + sample)
+                
+                # Do not fill last batch with samples from the beginning
+                if idx < len(self.indices):
+                    data_pieces_index, index = self.indices[idx]
+                    data, label = self.data_pieces[data_pieces_index]
+
+                    X.append(data[index : index + self.window_length])
+                    Y.append(label)
+        #
+
+        X = numpy.array(X)
+        Y = numpy.array(Y)
+        #
+        if self.do_standard_scaling:
+            X = (X - self.mean) / self.std
+        #
+        if X.min() < -20. or X.max() > 20.:
+            X = numpy.minimum(X,  20.)
+            X = numpy.maximum(X, -20.)
+        #
+
+        X = numpy.reshape(X, X.shape + (1,))
+
+        return (X, Y)
+
+
+#-------------------------------------------------------------------------------
+
+
+class RawDataGenerator2:
+    '''
+        Class for preloading data and provide batches.
+    '''
+
+    def __init__(self, index_filenames,
+                 window_length = 1, # in seconds
+                 shift = 0.5, # in seconds
+                 sampling_rate = 256, # in Hz
+                 batch_size=20,
+                 do_standard_scaling=True,
+                 in_training_mode=False,
+                 balance_batches=False,
+                 patient_id=None):
+        '''
+
+            Constructor to create objects of the class **DataGenerator** and
+            loads all the data.
+
+            This generator does not separate the signals in classes before
+            extracting windows. There will be windows with samples of both
+            classes at the onsets and offsets of the seizures. The label of
+            an extracted window is the label of the last value inside it.
+
+            Parameters
+            ----------
+
+            :param self:
+                Reference to the current object.
+
+            :param list index_filenames:
+                List of index filenames from which to load data filenames.
+
+            :param int window_length:
+                Size in vectors of channels in the signal to compose a
+                single sample.
+
+            :param int shift:
+                Number of vectors of channels from the signal to shift from
+                one sample to the next one in the sequence.
+
+            :param int sampling_rate:
+                Sampling rate of the signals, in Hz.
+
+            :param int batch_size:
+                Number of samples per batch.
+
+            :param boolean do_standard_scaling:
+                Flag to indicate whether to scale each channel to zero
+                mean and unit variance.
+
+            :param boolean in_training_mode:
+                Flag to indicate whether the process is in training mode.
+
+            :param string patient_id:
+                String to indicate the patient id. It is used to save the statistics file.
+
+        '''
+        #
+        self.batch_size = batch_size
+        self.window_length = int(window_length * sampling_rate)
+        self.shift = int(shift * sampling_rate)
+        self.do_standard_scaling = do_standard_scaling
+        self.in_training_mode = in_training_mode
+        self.balance_batches = balance_batches
+        self.patient_id = patient_id
+        #
+        self.filenames = list()
+        for fname in index_filenames:
+            with open(fname, 'r') as f:
+                for l in f:
+                    if l[0] != '#':
+                        self.filenames.append(l.strip() + '.edf.pbz2')
+                f.close()
+        #
+        self.indices = list()
+        self.indices_ictal = list()
+        self.data = list()
+
+        self.num_samples = [0, 0] # [class_0, class_1]
+
+        print("Loading EDF signals...")
+        for file_index in tqdm(range(len(self.filenames))):
+
+            recording = load_file(self.filenames[file_index],
+                            exclude_seizures=False,
+                            do_preemphasis=False,
+                            separate_seizures=False,
+                            verbose=0)
+            
+            values, labels = recording[0] # There is only 1 element on the list
+
+
+            if self.in_training_mode and self.balance_batches:
+                # Separate data by label
+                self.data.append(values)
+
+                for i in numpy.arange(0, len(values) - self.window_length + 1, step = self.shift):
+                        label = labels[i + self.window_length - 1]
+                        self.num_samples[label] += 1
+                        if label == 0:
+                            self.indices.append((file_index, i, label))
+                        elif label == 1:
+                            self.indices_ictal.append((file_index, i, label))
+                        else:
+                            raise Exception('Unexpected label')
+                #
+            else:
+                # Do not separate data by label
+                for data, labels in recording:
+                    self.data_pieces.append(data)
+
+                    for i in numpy.arange(0, len(data) - self.window_length + 1, step = self.shift):
+                            label = labels[i + self.window_length - 1]
+                            self.num_samples[label] += 1
+                            self.indices.append((file_index, i, label))
+                    #
+                #
+            #
+        #
+
+        self.total_samples = sum(self.num_samples)
+        self.num_batches = self.total_samples // self.batch_size
+        if self.total_samples % self.batch_size != 0:
+            self.num_batches += 1
+
+        print(f'Total number of samples: {self.total_samples}')
+        
+        print(f'Interictal samples: {self.num_samples[0]} '
+            + f'({self.num_samples[0] / self.total_samples * 100.0:.2f}%)')
+        
+        print(f'Ictal samples: {self.num_samples[1]} '
+            + f'({self.num_samples[1] / self.total_samples * 100.0:.2f}%)')
+        
+        print(f'Number of batches: {self.num_batches}')
+
+        #
+        if self.do_standard_scaling:
+            if self.in_training_mode:
+                means = []
+                counts = []
+                stddevs = []
+                for p, label in self.data_pieces:
+                    means.append(p.mean())
+                    counts.append(len(p))
+                    stddevs.append(p.std())
+                self.mean = sum([m * c for m, c in zip(means, counts)])
+                self.std  = sum([s * c for s, c in zip(stddevs, counts)])
+                self.mean /= sum(counts)
+                self.std  /= sum(counts)
+                #
+                array = numpy.array([self.mean, self.std])
+                numpy.save(f'stats/raw_{self.patient_id}.npy', array)
+                del means
+                del counts
+                del stddevs
+            else:
+                array = numpy.load(f'stats/raw_{self.patient_id}.npy')
+                self.mean = array[0]
+                self.std = array[1]
+            #
+            del array
+        #
+
+
+    def __len__(self):
+        '''
+        Returns the number of batches available in the current object.
+
+        :param self: Reference to the current object.
+
+        :return: The number of batches available in the current object.
+        '''
+        return self.num_batches
+
+
+    def shuffle_data(self):
+        '''
+        Shuffles the data.
+
+        :param self: Reference to the current object.
+        '''
+        #
+        shuffle(self.indices)
+        #
+
+
+    def __getitem__(self, batch_index : int):
+        '''
+        Returns the batch of samples specified by the index.
+
+        :param self: Reference to the current object.
+
+        :param int batch_index: Index of the batch to retrieve.
+
+        :return: A tuple with two objects, a batch of samples and the corresponding labels.
+        '''
+        #
+        X = list()
+        Y = list()
+        #
+        if self.balance_batches:
+            half_batch = self.batch_size // 2
+
+            # Class interictal - 0
+            for sample in range(half_batch):
+                idx = (batch_index * self.batch_size + sample) % len(self.indices)
+                
+                file_index, index, label = self.indices[idx]
+                data = self.data[file_index]
+
+                X.append(data[index : index + self.window_length])
+                Y.append(label)
+
+            # Class ictal - 1
+            for sample in range(half_batch):
+                idx = (batch_index * self.batch_size + sample) % len(self.indices_ictal)
+                
+                file_index, index, label = self.indices_ictal[idx]
+                data = self.data[file_index]
+
+                X.append(data[index : index + self.window_length])
+                Y.append(label)
+
+        else:
+            for sample in range(self.batch_size):
+                idx = (batch_index * self.batch_size + sample)
+                
+                # Do not fill last batch with samples from the beginning
+                if idx < len(self.indices):
+                    file_index, index, label = self.indices[idx]
+                    data = self.data[file_index]
+
+                    X.append(data[index : index + self.window_length])
+                    Y.append(label)
+        #
+
+        X = numpy.array(X)
+        Y = numpy.array(Y)
+        #
+        if self.do_standard_scaling:
+            X = (X - self.mean) / self.std
+        #
+        if X.min() < -20. or X.max() > 20.:
+            X = numpy.minimum(X,  20.)
+            X = numpy.maximum(X, -20.)
+        #
+
+        X = numpy.reshape(X, X.shape + (1,))
+
+        return (X, Y)
+
+
+#-------------------------------------------------------------------------------
+
+
 
 if __name__=='__main__':
 
-
-    dg = RawRecurrentDataGenerator(index_filenames=['indexes_detection/chb01/test.txt'],
+    """
+    dg = RawRecurrentDataGenerator(index_filenames=['../indexes_detection/chb01/test.txt'],
                           window_length = 1, # in seconds
                           shift = 0.5, # in seconds
                           timesteps = 19, # in seconds
@@ -418,6 +922,22 @@ if __name__=='__main__':
                           in_training_mode = True,
                           balance_batches = True,
                           patient_id='chb01')
+
+    for i in tqdm(range(len(dg))):
+        x, y = dg[i]
+        print(x.shape, y.shape)
+        #print(y)
+    """
+
+    dg = RawDataGenerator(index_filenames=['../indexes_detection/chb01/test.txt'],
+                 window_length = 1, # in seconds
+                 shift = 0.5, # in seconds
+                 sampling_rate = 256, # in Hz
+                 batch_size=20,
+                 do_standard_scaling=True,
+                 in_training_mode=True,
+                 balance_batches=True,
+                 patient_id='chb01')
 
     for i in tqdm(range(len(dg))):
         x, y = dg[i]
