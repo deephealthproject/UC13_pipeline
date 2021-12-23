@@ -23,11 +23,9 @@ def create_model(model_id, input_shape, num_classes):
         model = build_lstm(input_shape, num_classes)
     elif model_id == 'gru':
         model = build_gru(input_shape, num_classes)
-    elif model_id == 'conv':
+    elif model_id == 'conv1':
         model = build_conv(input_shape, num_classes)
     elif model_id == 'conv2':
-        model = build_conv2(input_shape, num_classes)
-    elif model_id == 'conv-paper':
         model = build_conv_paper(input_shape, num_classes)
 
     return model
@@ -71,57 +69,11 @@ def build_gru(input_shape, num_classes):
     return model
 
 
-#-------------------------------------------------------------------------------
-
-def build_conv(input_shape, num_classes):
-    
-    # input shape : (batch_size, 2560, 23, 1)
-    # Input is expected to be a window of 10 seconds
-
-    in_ = Input(shape=input_shape)
-    
-    k1 = 32
-    k2 = 64
-    k3 = 128
-
-    layer = GaussianNoise(0.25)(in_)
-
-    layer = Conv2D(k1, kernel_size=(128, 23), strides=(64, 1), padding='valid', activation='relu', kernel_constraint=max_norm(1))(layer)
-    layer = Reshape(((input_shape[0] - 64) // 64, k1, 1))(layer)
-    layer = Conv2D(k2, kernel_size=(3, 3), strides=(1, 1), padding='same', activation='relu', kernel_constraint=max_norm(1))(layer)
-    layer = SpatialDropout2D(0.25)(layer)
-    layer = MaxPool2D()(layer)
-    layer = Conv2D(k3, kernel_size=(3, 3), strides=(1, 1), padding='same', activation='relu', kernel_constraint=max_norm(1))(layer)
-    layer = SpatialDropout2D(0.25)(layer)
-    layer = MaxPool2D()(layer)
-    layer = Conv2D(k3, kernel_size=(3, 3), strides=(1, 1), padding='same', activation='relu', kernel_constraint=max_norm(1))(layer)
-    layer = SpatialDropout2D(0.25)(layer)
-    layer = MaxPool2D()(layer)
-    layer = Conv2D(k3, kernel_size=(3, 3), strides=(1, 1), padding='same', activation='relu', kernel_constraint=max_norm(1))(layer)
-    layer = SpatialDropout2D(0.25)(layer)
-
-    layer = Flatten()(layer)
-
-    layer = Dense(1024, activation=None)(layer)
-    layer = Activation('relu')(layer)
-    layer = Dropout(0.5)(layer)
-
-    layer = Dense(512, activation=None)(layer)
-    layer = Activation('relu')(layer)
-    layer = Dropout(0.5)(layer)
-
-    layer = Dense(num_classes, activation=None)(layer)
-    out_ = Activation('sigmoid')(layer)
-
-    model = Model(in_, out_)
-
-    return model
-
 
 # ------------------------------------------------------------------------------
 
 
-def build_conv2(input_shape, num_classes):
+def build_conv(input_shape, num_classes):
     
     # input shape : (batch_size, 2560, 23, 1)
     # Input is expected to be a window of 10 seconds
@@ -176,7 +128,16 @@ def conv_block(layer_in, filters):
 
 
 def build_conv_paper(input_shape, num_classes):
+    '''
+    This function builds a convolutional neural network model based on a
+    paper called: AUTOMATIC EPILEPTIC SEIZURE ONSET-OFFSET DETECTION BASED ON
+    CNN IN SCALP EEG.
+    This paper was written by Boonyakitanont et. al.
     
+    This is not an exact reconstruction, but relies on the main idea
+    of the paper mentioned.
+    '''
+
     # input shape : (batch_size, 256, 23, 1)
     # Input is expected to be a window of 1 second
 
@@ -200,15 +161,12 @@ def build_conv_paper(input_shape, num_classes):
     layer = conv_block(layer, 64)
     #layer = MaxPool2D((2, 2))(layer)
 
-    #layer = conv_block(layer, 16)
-    #layer = MaxPool2D((2, 2))(layer)
-
     layer = Flatten()(layer)
     layer = Dense(512, activation='relu')(layer)
     layer = Dropout(0.5)(layer)
     layer = Dense(512, activation='relu')(layer)
     layer = Dropout(0.5)(layer)
-    layer = Dense(num_classes, activation=None)(layer)
+    layer = Dense(1, activation=None)(layer)
     
     out_ = Activation('sigmoid')(layer)
 
@@ -219,7 +177,7 @@ def build_conv_paper(input_shape, num_classes):
 
 
 if __name__=='__main__':
-    net = build_conv2(input_shape=(256, 23, 1), num_classes=2)
+    net = build_conv(input_shape=(256, 23, 1), num_classes=1)
     net.compile(optimizer=Adam(),
                     loss='categorical_crossentropy',
                     metrics=['accuracy']

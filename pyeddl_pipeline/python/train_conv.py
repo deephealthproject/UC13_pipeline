@@ -9,7 +9,6 @@
         DeepHealth team @ PRHLT, UPV
 """
 
-
 import os
 import sys
 import argparse
@@ -18,66 +17,49 @@ from tqdm import tqdm
 import numpy
 
 from data_utils_detection import RawDataGenerator
-from models_keras import create_model
+from models import create_model
 
-import tensorflow as tf
-from tensorflow import keras
-import tensorflow.keras.backend as K
-from tensorflow.keras.optimizers import Adam, SGD, RMSprop
-from sklearn.metrics import confusion_matrix, classification_report, f1_score
+from pyeddl import eddl
+from pyeddl.tensor import Tensor
+from sklearn.metrics import f1_score, confusion_matrix, classification_report
 from sklearn.metrics import balanced_accuracy_score
 
 
-
 def main(args):
+
     index_training = [args.index]
     index_validation = [args.index_val]
     patient_id = args.id
-    model_id = args.model
+    model_id = args.model    
     epochs = args.epochs
     batch_size = args.batch_size
-    initial_lr = args.lr
-    opt = args.opt
     resume_dir = args.resume
     starting_epoch = args.starting_epoch
+    gpus = args.gpus
+    initial_lr = args.lr
+    optimizer = args.opt
 
+    model_checkpoint = None
 
-    # Set GPU
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-
-
-    # Create experiment directory or use an existing one to resume training
-
-    if resume_dir is not None:
-        # Resume training
+    # Create dirs for the experiment
+    if resume_dir is None:
+        os.makedirs('experiments', exist_ok=True)
+        exp_name = f'detection_conv_{patient_id}_{model_id}_{optimizer}_{initial_lr}'
+        exp_dir = f'experiments/{exp_name}'
+        os.makedirs(exp_dir, exist_ok=False)
+        os.makedirs(exp_dir + '/models')
+    else:
         exp_dir = resume_dir
-        model_dir = os.path.join(exp_dir, 'models')
-        model_filename = None
-
+        model_dir = exp_dir + '/models'
         for f in os.listdir(model_dir):
             if 'last' in f:
-                model_filename = os.path.join(model_dir, f)
+                model_checkpoint = os.path.join(model_dir, f)
         #
-        if model_filename is None:
+        if model_checkpoint is None:
             raise Exception(f'Last model not found in {model_dir}')
         #
-    else:
-        # Create dir for the experiment
-        os.makedirs('keras_experiments', exist_ok=True)
-        
-        exp_dir = os.path.join('keras_experiments' ,
-                f'detection_conv_{patient_id}_{model_id}_{opt}_{initial_lr}')
 
-        exp_time = datetime.now().strftime("%d-%b_%H:%M")
-        exp_dir = f'{exp_dir}_{exp_time}'
-        os.makedirs(exp_dir)
 
-        ## Create dir to store models
-        model_dir = os.path.join(exp_dir, 'models')
-        os.makedirs(model_dir)
-    #
-    
-    
     # Create data generator objects
 
     # Data Generator Object for training
@@ -92,6 +74,7 @@ def main(args):
                     balance_batches=True,
                     patient_id=patient_id)
 
+
     print('\n\nCreating Validation Data Generator...', file=sys.stderr)
     dg_val = RawDataGenerator(index_filenames=index_validation,
                     window_length = args.window_length, # in seconds
@@ -102,59 +85,40 @@ def main(args):
                     in_training_mode=False,
                     balance_batches=False,
                     patient_id=patient_id)
+
     
     # Get input shape
     x, y = dg[0]
     #print(x.shape)
     input_shape = x.shape[1:]
     print(input_shape)
-    
-
-    # Create or Load the model
-
-    if resume_dir is None:
-        # Create model and define optimizer
-        model = create_model(model_id, input_shape, 1)
-
-        if opt == 'adam':
-            optimizer = Adam(learning_rate=initial_lr)
-        elif opt == 'sgd':
-            optimizer = SGD(learning_rate=initial_lr)
-        elif opt == 'rmsprop':
-            optimizer = RMSprop(learning_rate=initial_lr)
-        else:
-            raise Exception(f'Wrong optimizer name, check help with -h.')
 
 
-        model.compile(optimizer=optimizer,
-                    loss='binary_crossentropy',
-                    metrics=['binary_accuracy']
-                    )
-    
-    else:
-        # Load model, already compiled and with the optimizer state preserved
-        model = keras.models.load_model(model_filename)
+    log_file = open(f'{exp_dir}/training.log', 'w')
+    log_file.write('epoch, train_acc, train_loss, val_acc,'
+                  + ' val_f1score, val_balanced_acc\n')
+    log_file.flush()
+
+
+    net = create_model(model_id,
+                       input_shape,
+                       num_classes=1,
+                       filename=model_checkpoint,
+                       lr=initial_lr,
+                       opt=optimizer,
+                       gpus=gpus)
     #
-
-    model.summary()
-
-
-    # Log files
-    log_filename = f'{exp_dir}/training.log'
-    logger = open(log_filename, 'a')
-    logger.write('epoch, train_acc, train_loss, val_acc, ' 
-                + 'val_loss, val_f1score, val_balanced_acc\n')
-    
-    logger.flush()
-
 
     best_val_score = 0.0
 
-    # Train the model
     for epoch in range(starting_epoch, epochs):
 
         print(f'\nTraining epoch {epoch+1} of {epochs}...', file=sys.stderr)
+
         dg.shuffle_data()
+
+        # TRAINING STAGE
+        eddl.reset_loss(net)
 
         # Set a progress bar for the training loop
         pbar = tqdm(range(len(dg)))
@@ -163,54 +127,46 @@ def main(args):
             # Load batch of data
             x, y = dg[i]
 
-            #y = keras.utils.to_categorical(y, num_classes=2)
+            x = Tensor.fromarray(x) # (batch_size, 1, 2560, 23)
+            y = Tensor.fromarray(y) # (2, 1)
 
             # Forward and backward of the channel through the net
-            outputs = model.train_on_batch(x, y=y, reset_metrics=False)
+            eddl.train_batch(net, [x], [y])
 
-            pbar.set_description(f'Training[loss={outputs[0]:.5f}, acc={outputs[1]:.5f}]')
-        #
+            losses = eddl.get_losses(net)
+            #metrics = eddl.get_metrics(net)
 
-        # Store training results
-        train_loss = outputs[0]
-        train_acc = outputs[1]
+            pbar.set_description(f'Training[loss={losses[0]:.5f}, acc=Not Available]')
 
+        print()
 
-        # Validation
-        print(f'\nValidation epoch {epoch+1}...', file=sys.stderr)
+        training_loss = losses[0]
+        
+        # VALIDATION
+        print(f'\nValidation epoch {epoch+1}', file=sys.stderr)
 
         Y_true = list()
         Y_pred = list()
 
-        accumulated_loss = 0.0
-
         for j in tqdm(range(len(dg_val))):
             x, y = dg_val[j]
-
-            #y = keras.utils.to_categorical(y, num_classes=2)
-
+            
+            x = Tensor.fromarray(x)
             # Forward and backward of the channel through the net
-            y_pred = model.predict(x)
+            (y_pred, ) = eddl.predict(net, [x])
+
+            y_pred = y_pred.getdata()
             y_pred = y_pred.ravel()
-
-            #accumulated_loss += keras.losses.CategoricalCrossentropy()(y, y_pred)
-            accumulated_loss += keras.losses.BinaryCrossentropy()(y, y_pred)
-
-            #Y_pred += y_pred.argmax(axis=1).tolist()
-            #Y_true += y.argmax(axis=1).tolist()
             y_pred[y_pred >= 0.5] = 1
             y_pred[y_pred < 0.5] = 0
 
-            Y_pred += y_pred.astype(int).tolist()
-            Y_true += y.tolist()
-            #
-        #
 
+            Y_pred += y_pred.astype(int).tolist()
+            Y_true += y.ravel().astype(int).tolist()
+        #
+        
         y_true = numpy.array(Y_true) * 1.0
         y_pred = numpy.array(Y_pred) * 1.0
-
-        # Calculate validation loss
-        val_loss = accumulated_loss / len(dg_val)
 
         # Calculate other metrics
         val_accuracy = sum(y_true == y_pred) / len(y_true)
@@ -234,24 +190,20 @@ def main(args):
         print('\n--------------------------------------------------------------\n', file=sys.stderr)
 
 
-        logger.write('%d,%g,%g,%g,%g,%g,%g\n' % (epoch, train_acc, train_loss,
-            val_accuracy, val_loss, fscore, balanced_acc))
+        log_file.write('%d,%g,%g,%g,%g,%g\n' % (epoch, -1, training_loss,
+            val_accuracy, fscore, balanced_acc))
 
-        logger.flush()
+        log_file.flush()
 
-
-        if balanced_acc > best_val_score:
-            # Save best model if score is improved
+        # Save best model
+        if (balanced_acc > best_val_score):
             best_val_score = balanced_acc
-            model.save(f'{model_dir}/{model_id}_best_epoch' + f'_{epoch:04d}_{balanced_acc:.4f}.h5')
+            eddl.save_net_to_onnx_file(net, f'{exp_dir}/models/best_model_epoch_{epoch:04d}_val_acc_{balanced_acc:.4f}.onnx')
         
-        # Save last model
-        model.save(f'{model_dir}/{model_id}_last.h5')
+        eddl.save_net_to_onnx_file(net, f'{exp_dir}/models/last.onnx')
 
 
-
-
-
+            
 
 # ------------------------------------------------------------------------------
 
@@ -284,8 +236,8 @@ if __name__ == '__main__':
     parser.add_argument('--opt', help='Optimizer: "adam", "sgd". Default -> adam',
         default='adam')
 
-    parser.add_argument('--gpu', help='Id of the gpu to use.'+ 
-        ' Usage --gpu 0', default='0')
+    parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
+        ' Usage "--gpus 1 1" (two GPUs)', nargs="+", default=[1], type=int)
 
 
     # Arguments of the data generator

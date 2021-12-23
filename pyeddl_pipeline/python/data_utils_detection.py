@@ -644,7 +644,8 @@ class RawDataGenerator:
             X = numpy.maximum(X, -20.)
         #
 
-        X = numpy.reshape(X, X.shape + (1,))
+        X = numpy.reshape(X, (X.shape[0], 1, )  + X.shape[1:])
+        Y = numpy.reshape(Y, (Y.shape[0], 1))
 
         return (X, Y)
 
