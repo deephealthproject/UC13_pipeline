@@ -115,7 +115,7 @@ def main(args):
 
     if resume_dir is None:
         # Create model and define optimizer
-        model = create_model(model_id, input_shape, 2)
+        model = create_model(model_id, input_shape, 1)
 
         if opt == 'adam':
             optimizer = Adam(learning_rate=initial_lr)
@@ -209,8 +209,6 @@ def main(args):
 
         y_true = numpy.array(Y_true) * 1.0
         y_pred = numpy.array(Y_pred) * 1.0
-
-        print(type(y_true), type(y_pred), y_true.shape, y_pred.shape)
 
         # Calculate validation loss
         val_loss = accumulated_loss / len(dg_val)

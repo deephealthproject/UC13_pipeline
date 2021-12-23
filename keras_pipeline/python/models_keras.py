@@ -8,7 +8,7 @@ from tensorflow.keras.layers import LSTM, GRU
 from tensorflow.keras.layers import GaussianNoise
 from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, Reshape
 from tensorflow.python.keras.layers.core import Dropout, SpatialDropout2D
-from tensorflow.python.keras.layers.pooling import MaxPool2D
+from tensorflow.python.keras.layers.pooling import MaxPool2D, GlobalMaxPool2D
 from tensorflow.keras.regularizers import L2
 from tensorflow.keras.constraints import max_norm
 from tensorflow.keras.optimizers import Adam
@@ -27,6 +27,8 @@ def create_model(model_id, input_shape, num_classes):
         model = build_conv(input_shape, num_classes)
     elif model_id == 'conv2':
         model = build_conv2(input_shape, num_classes)
+    elif model_id == 'conv-paper':
+        model = build_conv_paper(input_shape, num_classes)
 
     return model
 
@@ -109,7 +111,7 @@ def build_conv(input_shape, num_classes):
     layer = Dropout(0.5)(layer)
 
     layer = Dense(num_classes, activation=None)(layer)
-    out_ = Activation('softmax')(layer)
+    out_ = Activation('sigmoid')(layer)
 
     model = Model(in_, out_)
 
@@ -186,29 +188,29 @@ def build_conv_paper(input_shape, num_classes):
     layer = conv_block(layer, 16)
     layer = MaxPool2D((2, 1))(layer)
 
-    layer = conv_block(layer, 16)
+    layer = conv_block(layer, 32)
     layer = MaxPool2D((2, 1))(layer)
 
-    layer = conv_block(layer, 16)
+    layer = conv_block(layer, 32)
     layer = MaxPool2D((2, 2))(layer)
 
-    layer = conv_block(layer, 16)
+    layer = conv_block(layer, 64)
     layer = MaxPool2D((2, 2))(layer)
 
-    layer = conv_block(layer, 16)
-    layer = MaxPool2D((2, 2))(layer)
+    layer = conv_block(layer, 64)
+    #layer = MaxPool2D((2, 2))(layer)
 
-    layer = conv_block(layer, 16)
-    layer = MaxPool2D((2, 2))(layer)
+    #layer = conv_block(layer, 16)
+    #layer = MaxPool2D((2, 2))(layer)
 
     layer = Flatten()(layer)
-    layer = Dropout(0.25)(layer)
-    layer = Dense(64, activation='relu')(layer)
-    layer = Dense(64, activation='relu')(layer)
+    layer = Dense(512, activation='relu')(layer)
+    layer = Dropout(0.5)(layer)
+    layer = Dense(512, activation='relu')(layer)
     layer = Dropout(0.5)(layer)
     layer = Dense(num_classes, activation=None)(layer)
     
-    out_ = Activation('softmax')(layer)
+    out_ = Activation('sigmoid')(layer)
 
     model = Model(in_, out_)
 
