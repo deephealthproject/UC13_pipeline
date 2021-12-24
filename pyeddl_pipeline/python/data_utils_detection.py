@@ -742,7 +742,7 @@ class RawDataGenerator2:
                             do_preemphasis=False,
                             separate_seizures=False,
                             verbose=0)
-            
+
             values, labels = recording[0] # There is only 1 element on the list
 
 
@@ -762,10 +762,10 @@ class RawDataGenerator2:
                 #
             else:
                 # Do not separate data by label
-                for data, labels in recording:
-                    self.data_pieces.append(data)
+                for values, labels in recording:
+                    self.data.append(values)
 
-                    for i in numpy.arange(0, len(data) - self.window_length + 1, step = self.shift):
+                    for i in numpy.arange(0, len(values) - self.window_length + 1, step = self.shift):
                             label = labels[i + self.window_length - 1]
                             self.num_samples[label] += 1
                             self.indices.append((file_index, i, label))
@@ -795,7 +795,7 @@ class RawDataGenerator2:
                 means = []
                 counts = []
                 stddevs = []
-                for p, label in self.data_pieces:
+                for p in self.data:
                     means.append(p.mean())
                     counts.append(len(p))
                     stddevs.append(p.std())
@@ -901,7 +901,8 @@ class RawDataGenerator2:
             X = numpy.maximum(X, -20.)
         #
 
-        X = numpy.reshape(X, X.shape + (1,))
+        X = numpy.reshape(X, (X.shape[0], 1, )  + X.shape[1:])
+        Y = numpy.reshape(Y, (Y.shape[0], 1))
 
         return (X, Y)
 
@@ -930,9 +931,9 @@ if __name__=='__main__':
         #print(y)
     """
 
-    dg = RawDataGenerator(index_filenames=['../indexes_detection/chb01/test.txt'],
-                 window_length = 1, # in seconds
-                 shift = 0.5, # in seconds
+    dg = RawDataGenerator2(index_filenames=['../indexes_detection/chb01/test.txt'],
+                 window_length = 10, # in seconds
+                 shift = 0.25, # in seconds
                  sampling_rate = 256, # in Hz
                  batch_size=20,
                  do_standard_scaling=True,

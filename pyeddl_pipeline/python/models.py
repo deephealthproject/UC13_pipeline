@@ -164,9 +164,6 @@ def build_conv(input_shape, num_classes, lr, opt, filename=None, gpus=[1]):
 
         in_ = eddl.Input(input_shape)
         #
-        #layer = eddl.GaussianNoise(in_, 0.25)
-
-        
         layer = eddl.L2(eddl.Conv2D(in_, 64, kernel_size=[128, 23], strides=[64, 1], padding='valid'), 0.00001)
         layer = eddl.Reshape(layer, (1, (input_shape[1] - 64) // 64, 64))
 
@@ -174,6 +171,7 @@ def build_conv(input_shape, num_classes, lr, opt, filename=None, gpus=[1]):
             layer = eddl.Conv2D(layer, k, kernel_size=[3, 3], strides=[1, 1], padding='same')
             layer = eddl.L2(layer, 0.00001)
             layer = eddl.ReLu(layer)
+            layer = eddl.Dropout(layer, 0.25)
             layer = eddl.MaxPool2D(layer)
 
         layer = eddl.Conv2D(layer, 256, kernel_size=[3, 3], strides=[1, 1], padding='same')

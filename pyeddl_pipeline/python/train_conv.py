@@ -127,6 +127,11 @@ def main(args):
             # Load batch of data
             x, y = dg[i]
 
+            # Add gaussian noise
+            if model_id == 'conv1':
+                noise = numpy.random.standard_normal(x.shape) * 0.25
+                x += noise
+
             x = Tensor.fromarray(x) # (batch_size, 1, 2560, 23)
             y = Tensor.fromarray(y) # (2, 1)
 
@@ -199,9 +204,10 @@ def main(args):
         if (balanced_acc > best_val_score):
             best_val_score = balanced_acc
             eddl.save_net_to_onnx_file(net, f'{exp_dir}/models/best_model_epoch_{epoch:04d}_val_acc_{balanced_acc:.4f}.onnx')
+            #eddl.save(net, f'{exp_dir}/models/best_model_epoch_{epoch:04d}_val_acc_{balanced_acc:.4f}.eddl')
         
         eddl.save_net_to_onnx_file(net, f'{exp_dir}/models/last.onnx')
-
+        #eddl.save(net, f'{exp_dir}/models/last.eddl')
 
             
 
