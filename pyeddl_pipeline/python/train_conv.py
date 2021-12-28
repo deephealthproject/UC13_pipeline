@@ -16,7 +16,7 @@ from datetime import datetime
 from tqdm import tqdm
 import numpy
 
-from data_utils_detection import RawDataGenerator
+from data_utils_detection import RawDataGenerator2
 from models import create_model
 
 from pyeddl import eddl
@@ -64,7 +64,7 @@ def main(args):
 
     # Data Generator Object for training
     print('\n\nCreating Training Data Generator...', file=sys.stderr)
-    dg = RawDataGenerator(index_filenames=index_training,
+    dg = RawDataGenerator2(index_filenames=index_training,
                     window_length = args.window_length, # in seconds
                     shift = args.shift, # in seconds
                     sampling_rate = 256, # in Hz
@@ -76,7 +76,7 @@ def main(args):
 
 
     print('\n\nCreating Validation Data Generator...', file=sys.stderr)
-    dg_val = RawDataGenerator(index_filenames=index_validation,
+    dg_val = RawDataGenerator2(index_filenames=index_validation,
                     window_length = args.window_length, # in seconds
                     shift = args.shift, # in seconds
                     sampling_rate = 256, # in Hz

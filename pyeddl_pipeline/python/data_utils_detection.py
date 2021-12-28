@@ -83,7 +83,7 @@ class RawRecurrentDataGenerator:
         self.balance_batches = balance_batches
         self.patient_id = patient_id
         #
-        self.window_length = window_length * sampling_rate
+        self.window_length = int(window_length * sampling_rate)
         self.sample_shift = int(sampling_rate * shift) # Half of sample length
         self.timesteps = timesteps
         self.num_channels = 23
@@ -937,8 +937,8 @@ if __name__=='__main__':
                  sampling_rate = 256, # in Hz
                  batch_size=20,
                  do_standard_scaling=True,
-                 in_training_mode=True,
-                 balance_batches=True,
+                 in_training_mode=False,
+                 balance_batches=False,
                  patient_id='chb01')
 
     for i in tqdm(range(len(dg))):

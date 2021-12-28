@@ -21,7 +21,7 @@ from data_utils_detection import RawRecurrentDataGenerator
 from models import create_model
 from pyeddl import eddl
 from pyeddl.tensor import Tensor
-from sklearn.metrics import f1_score, confusion_matrix, classification_report
+from sklearn.metrics import f1_score, confusion_matrix, classification_report, balanced_accuracy_score
 
 
 
@@ -94,6 +94,8 @@ def main(args):
                           patient_id=patient_id)
 
     
+    print(dg.input_shape)
+
     net = create_model(model_id,
                        dg.input_shape,
                        num_classes=2,
@@ -205,10 +207,12 @@ def main(args):
         cnf_matrix = confusion_matrix(y_true, y_pred)
         report = classification_report(y_true, y_pred)
         fscore = f1_score(y_true, y_pred, labels=[0, 1], average='macro')
+        balanced_acc = balanced_accuracy_score(y_true, y_pred)
 
         print(' -- All channels involved (combined for each timestamp) --\n', file=sys.stderr)
         print(f'Validation acc : {val_accuracy}', file=sys.stderr)
         print(f'Validation macro f1-score : {fscore}', file=sys.stderr)
+        print(f'Validation balanced acc : {balanced_acc}', file=sys.stderr)
         print('Confussion matrix:', file=sys.stderr)
         print(f'{cnf_matrix}\n', file=sys.stderr)
         print('Classification report:', file=sys.stderr)

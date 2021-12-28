@@ -15,10 +15,10 @@ import argparse
 from tqdm import tqdm
 import numpy
 from models import create_model
-from data_utils_detection import RawRecurrentDataGenerator
+from data_utils_detection import RawDataGenerator2
 from pyeddl import eddl
 from pyeddl.tensor import Tensor
-from sklearn.metrics import f1_score, confusion_matrix, classification_report
+from sklearn.metrics import f1_score, confusion_matrix, classification_report, balanced_accuracy_score
 
 
 
@@ -194,14 +194,16 @@ def main(args):
 
     # Create Data Generator object for the test set
     print('Creating Test Data Generator...', file=sys.stderr)
-    dg_test = RawRecurrentDataGenerator(index_filenames=index_test,
-                          window_length = args.window_length,
-                          shift = args.shift, 
-                          timesteps = args.timesteps,
-                          sampling_rate = 256, # in Hz
-                          batch_size=batch_size,
-                          in_training_mode=False,
-                          patient_id=patient_id)
+
+    dg_test = RawDataGenerator2(index_filenames=index_test,
+                    window_length=args.window_length, # in seconds
+                    shift=args.shift, # in seconds
+                    sampling_rate=256, # in Hz
+                    batch_size=batch_size,
+                    do_standard_scaling=True,
+                    in_training_mode=False,
+                    balance_batches=False,
+                    patient_id=patient_id)
     #
 
     model_dir = os.path.join(exp_dir, 'models')
@@ -228,8 +230,8 @@ def main(args):
     # Load the model in the eddl
     print('Loading the model...', file=sys.stderr)
     net = create_model(model_id=model_id,
-                       input_shape=None, # Not needed if we are loading
-                       num_classes=2,
+                       input_shape=None, # Not needed if we are loading a ONNX
+                       num_classes=1,
                        filename=model_filename,
                        gpus=gpus)
     #
@@ -237,59 +239,30 @@ def main(args):
 
     # Get predictions for the test set with the best model
     print('Testing the model with the test signals...', file=sys.stderr)
-    Y_true_single_channel = list()
-    Y_pred_single_channel = list()
     Y_true = list()
     Y_pred = list()
 
     for j in tqdm(range(len(dg_test))):
-        x, y = dg_test[j]
-        
-        channels_y_pred = list()
-        for channel in range(x.shape[3]):
-            x_channel = x[:, :, :, channel]
-
-            channel_tensor_batch = Tensor.fromarray(x_channel)
+            x, y = dg_test[j]
+            
+            x = Tensor.fromarray(x)
             # Forward and backward of the channel through the net
-            (y_pred, ) = eddl.predict(net, [channel_tensor_batch])
+            (y_pred, ) = eddl.predict(net, [x])
 
             y_pred = y_pred.getdata()
-            
-            channels_y_pred.append(y_pred)
-            Y_pred_single_channel += y_pred.argmax(axis=1).tolist()
-            Y_true_single_channel += y.tolist()
-        
-        channels_y_pred = numpy.array(channels_y_pred)
-        # (23, batch_size, 2)
-        channels_y_pred = numpy.sum(channels_y_pred, axis=0)
-        # print(channels_y_pred.shape) -> (batch_size, 2)
-        
-        Y_true += y.tolist()
-        Y_pred += channels_y_pred.argmax(axis=1).tolist()
-    #
+            y_pred = y_pred.ravel()
+            y_pred[y_pred >= 0.5] = 1
+            y_pred[y_pred < 0.5] = 0
+
+
+            Y_pred += y_pred.astype(int).tolist()
+            Y_true += y.ravel().astype(int).tolist()
+        #
 
     y_true = numpy.array(Y_true) * 1.0
     y_pred = numpy.array(Y_pred) * 1.0
-    y_true_single_channel = numpy.array(Y_true_single_channel) * 1.0
-    y_pred_single_channel = numpy.array(Y_pred_single_channel) * 1.0
-
     
     # Calculate and print basic metrics
-
-    test_accuracy_single_channel = sum(y_true_single_channel == y_pred_single_channel) / len(y_true_single_channel)
-    cnf_matrix = confusion_matrix(y_true_single_channel, y_pred_single_channel)
-    report = classification_report(y_true_single_channel, y_pred_single_channel)
-    fscore_single_channel = f1_score(y_true_single_channel, y_pred_single_channel, labels=[0, 1], average='macro')
-    
-    print('***************************************************************\n', file=sys.stderr)
-    print(f'Test results\n', file=sys.stderr)
-    print(' -- Single channel results (no combination of channels) --\n', file=sys.stderr)
-    print(f'Test accuracy : {test_accuracy_single_channel}', file=sys.stderr)
-    print(f'Test macro f1-score : {fscore_single_channel}', file=sys.stderr)
-    print('Confussion matrix:', file=sys.stderr)
-    print(f'{cnf_matrix}\n', file=sys.stderr)
-    print('Classification report:', file=sys.stderr)
-    print(report, file=sys.stderr)
 
     print('\n--------------------------------------------------------------\n', file=sys.stderr)
 
@@ -297,10 +270,13 @@ def main(args):
     cnf_matrix = confusion_matrix(y_true, y_pred)
     report = classification_report(y_true, y_pred)
     fscore = f1_score(y_true, y_pred, labels=[0, 1], average='macro')
+    balanced_acc = balanced_accuracy_score(y_true, y_pred)
 
-    print(' -- All channels involved (combined for each timestamp) --\n', file=sys.stderr)
+    print(f' -- Patient {patient_id} test results --')
+    print(f'Model:  {best_model_name}\n', file=sys.stderr)
     print(f'Test accuracy : {test_accuracy}', file=sys.stderr)
     print(f'Test macro f1-score : {fscore}', file=sys.stderr)
+    print(f'Test balanced acc : {balanced_acc}', file=sys.stderr)
     print('Confussion matrix:', file=sys.stderr)
     print(f'{cnf_matrix}\n', file=sys.stderr)
     print('Classification report:', file=sys.stderr)
@@ -312,7 +288,7 @@ def main(args):
     acc_window, latency, fp_h, recall = calculate_detection_metrics(
                                         y_true,
                                         y_pred,
-                                        sample_shift=args.sample_shift,
+                                        sample_shift=args.shift,
                                         sliding_window_length=args.inference_window,
                                         alpha_pos=args.alpha_pos,
                                         alpha_neg=args.alpha_neg,
@@ -334,7 +310,7 @@ def main(args):
 if __name__ == '__main__':
 
     # Get arguments
-    parser = argparse.ArgumentParser(description='Script for testing recurrent models' + 
+    parser = argparse.ArgumentParser(description='Script for testing CNN models' + 
         ' to detect epilepsy on UC13. \nThis script loads the best model '
         + 'saved in the experiments directory specified and performs the inference, '
         + 'returning the obtained metrics.', 
@@ -365,8 +341,6 @@ if __name__ == '__main__':
     parser.add_argument('--shift', type=float, help='Window shift '
     + ' in seconds. Default -> 0.5', default=0.5)
 
-    parser.add_argument('--timesteps', type=int, help='Timesteps to use as a '
-    + ' sequence. Default -> 19', default=19)
 
     # Args for the alarm function
     parser.add_argument('--inference-window', type=int, help='Length of the '
