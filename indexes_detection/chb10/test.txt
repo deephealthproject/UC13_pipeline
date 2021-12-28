@@ -1,7 +1,0 @@
-../../clean_signals/chb10/chb10_18
-../../clean_signals/chb10/chb10_19
-../../clean_signals/chb10/chb10_21
-../../clean_signals/chb10/chb10_22
-../../clean_signals/chb10/chb10_28
-../../clean_signals/chb10/chb10_38
-../../clean_signals/chb10/chb10_89

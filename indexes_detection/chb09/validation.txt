@@ -1,3 +1,0 @@
-../../clean_signals/chb09/chb09_13
-../../clean_signals/chb09/chb09_14
-../../clean_signals/chb09/chb09_08

@@ -1,9 +1,0 @@
-../../clean_signals/chb23/chb23_06
-../../clean_signals/chb23/chb23_07
-../../clean_signals/chb23/chb23_08
-../../clean_signals/chb23/chb23_09
-../../clean_signals/chb23/chb23_10
-../../clean_signals/chb23/chb23_16
-../../clean_signals/chb23/chb23_17
-../../clean_signals/chb23/chb23_19
-../../clean_signals/chb23/chb23_20

@@ -1,5 +1,0 @@
-../../clean_signals/chb22/chb22_23
-../../clean_signals/chb22/chb22_24
-../../clean_signals/chb22/chb22_26
-../../clean_signals/chb22/chb22_27
-../../clean_signals/chb22/chb22_25
