@@ -12,8 +12,8 @@
 
 import os
 import sys
-import time
 import argparse
+from datetime import datetime
 import numpy
 from tqdm import tqdm
 
@@ -50,6 +50,10 @@ def main(args):
         os.makedirs('experiments', exist_ok=True)
         exp_name = f'detection_recurrent_{patient_id}_{model_id}_{optimizer}_{initial_lr}'
         exp_dir = f'experiments/{exp_name}'
+
+        exp_time = datetime.now().strftime("%d-%b_%H:%M")
+        exp_dir = f'{exp_dir}_{exp_time}'
+
         os.makedirs(exp_dir, exist_ok=False)
         os.makedirs(exp_dir + '/models')
     else:
@@ -256,9 +260,9 @@ if __name__ == '__main__':
                          default='lstm')
 
     parser.add_argument('--epochs', type=int, help='Number of epochs to' +
-         ' perform.', default=10)
+         ' perform. Default -> 10', default=10)
     
-    parser.add_argument('--batch-size', type=int, help='Batch size.',
+    parser.add_argument('--batch-size', type=int, help='Batch size. Default -> 64',
         default=64)
 
     parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
@@ -281,10 +285,12 @@ if __name__ == '__main__':
     + ' sequence. Default -> 19', default=19)
 
     # Arguments to resume an experiment
-    parser.add_argument('--resume', help='Directory of the experiment dir to resume.',
+    parser.add_argument('--resume', help='Directory of the experiment dir to resume. (optional)',
                 default=None)
 
-    parser.add_argument('--starting-epoch', type=int, help='The number of the' +
-    ' epoch to resume the training process.', default=0)
+    parser.add_argument('--starting-epoch', help='Number of the epoch to start ' + 
+                        'the training again. (--epochs must be the total ' +
+                        'number of epochs to be done, including the epochs ' +
+                        'already done before resuming)', type=int, default=0)
 
     main(parser.parse_args())

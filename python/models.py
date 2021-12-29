@@ -219,8 +219,6 @@ def build_conv(input_shape, num_classes, lr, opt, filename=None, gpus=[1]):
 
 
 
-
-
 # ------------------------------------------------------------------------------
 
 if __name__ == '__main__':
