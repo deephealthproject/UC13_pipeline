@@ -70,7 +70,7 @@ def main(args):
 
     
     log_file = open(f'{exp_dir}/training_log.txt', 'w')
-    log_file.write('epoch, train_loss, train_acc, val_acc_single_channel,'
+    log_file.write('epoch, train_acc, train_loss, val_acc_single_channel,'
         + ' val_f1score_single_channel, val_acc, val_f1score\n')
     log_file.flush()
 
@@ -223,7 +223,7 @@ def main(args):
         print(report, file=sys.stderr)
         print('***************************************************************\n\n', file=sys.stderr)
 
-        log_file.write('%d,%d,%g,%g,%g,%g,%g\n' % (epoch, training_loss, -1,
+        log_file.write('%d,%g,%g,%g,%g,%g,%g\n' % (epoch, -1, training_loss,
             val_accuracy_single_channel, fscore_single_channel,
             val_accuracy, fscore))
 
