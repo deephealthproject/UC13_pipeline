@@ -46,6 +46,10 @@ def main(args):
         os.makedirs('experiments', exist_ok=True)
         exp_name = f'detection_conv_{patient_id}_{model_id}_{optimizer}_{initial_lr}'
         exp_dir = f'experiments/{exp_name}'
+
+        exp_time = datetime.now().strftime("%d-%b_%H:%M")
+        exp_dir = f'{exp_dir}_{exp_time}'
+
         os.makedirs(exp_dir, exist_ok=False)
         os.makedirs(exp_dir + '/models')
     else:
@@ -227,11 +231,11 @@ if __name__ == '__main__':
     
     parser.add_argument('--id', help='Id of the patient, e.g. "chb01".', required=True)
 
-    parser.add_argument('--model', help='Model id to use: "conv1", "conv2".',
+    parser.add_argument('--model', help='Model id to use: "conv1".',
                          default='conv1')
 
     parser.add_argument('--epochs', type=int, help='Number of epochs to' +
-         ' perform.', default=1)
+         ' perform. Default -> 10', default=1)
     
     parser.add_argument('--batch-size', type=int, help='Batch size.',
         default=64)
@@ -263,5 +267,9 @@ if __name__ == '__main__':
                         'number of epochs to be done, including the epochs ' +
                         'already done before resuming)', type=int, default=0)
      
+
+    # Arguments to resume an experiment
+    parser.add_argument('--resume', help='Directory of the experiment dir to resume. (optional)',
+                default=None)
 
     main(parser.parse_args())
