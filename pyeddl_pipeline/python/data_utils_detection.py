@@ -396,6 +396,7 @@ class RawRecurrentDataGenerator:
             #print("#  values of all the samples in this batch clipped, current limits are [%f, %f]" % (X.min(), X.max()), file = sys.stderr)
             #print("#  ", file = sys.stderr)
         #
+        Y = numpy.reshape(Y, (Y.shape[0], 1))
 
         return X, Y
 

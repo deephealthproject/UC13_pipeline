@@ -229,7 +229,7 @@ def main(args):
     print('Loading the model...', file=sys.stderr)
     net = create_model(model_id=model_id,
                        input_shape=None, # Not needed if we are loading
-                       num_classes=2,
+                       num_classes=1,
                        filename=model_filename,
                        gpus=gpus)
     #

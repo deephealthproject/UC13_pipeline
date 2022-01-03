@@ -102,7 +102,7 @@ def main(args):
 
     net = create_model(model_id,
                        dg.input_shape,
-                       num_classes=2,
+                       num_classes=1,
                        filename=model_checkpoint,
                        lr=initial_lr,
                        opt=optimizer,
@@ -125,12 +125,13 @@ def main(args):
             # Load batch of data
             x, y = dg[i]
 
-            _y_ = numpy.zeros([len(y), 2])
-            for i in range(2):
-                _y_[y == i, i] = 1
-            _y_ = _y_.reshape((len(y), 1, 2))
-            y = Tensor.fromarray(_y_)
+            #_y_ = numpy.zeros([len(y), 2])
+            #for i in range(2):
+            #    _y_[y == i, i] = 1
+            #_y_ = _y_.reshape((len(y), 1, 2))
+            #y = Tensor.fromarray(_y_)
 
+            y = Tensor.fromarray(y.reshape((len(y), 1, 1)))
 
             for channel in range(x.shape[3]):
                 x_channel = x[:, :, :, channel]
@@ -170,19 +171,25 @@ def main(args):
                 (y_pred, ) = eddl.predict(net, [channel_tensor_batch])
 
                 y_pred = y_pred.getdata()
+                y_pred = y_pred.ravel()
                 
                 channels_y_pred.append(y_pred)
-                Y_pred_single_channel += y_pred.argmax(axis=1).tolist()
-                Y_true_single_channel += y.tolist()
-            
+
+                y_pred[y_pred >= 0.5] = 1
+                y_pred[y_pred < 0.5] = 0
+                Y_pred_single_channel += y_pred.astype(int).tolist()
+                Y_true_single_channel += y.ravel().astype(int).tolist()
+
             channels_y_pred = numpy.array(channels_y_pred)
-            # (23, batch_size, 2)
+            # Shape -> (23, batch_size)
             channels_y_pred = numpy.sum(channels_y_pred, axis=0)
             channels_y_pred = channels_y_pred / 23.0
-            # print(channels_y_pred.shape) -> (batch_size, 2)
+            # Shape -> (batch_size,)
+            channels_y_pred[channels_y_pred >= 0.5] = 1
+            channels_y_pred[channels_y_pred < 0.5] = 0
             
-            Y_true += y.tolist()
-            Y_pred += channels_y_pred.argmax(axis=1).tolist()
+            Y_true += y.ravel().astype(int).tolist()
+            Y_pred += channels_y_pred.astype(int).tolist()
         #
 
         y_true = numpy.array(Y_true) * 1.0
@@ -194,12 +201,14 @@ def main(args):
         cnf_matrix = confusion_matrix(y_true_single_channel, y_pred_single_channel)
         report = classification_report(y_true_single_channel, y_pred_single_channel)
         fscore_single_channel = f1_score(y_true_single_channel, y_pred_single_channel, labels=[0, 1], average='macro')
+        balanced_acc_single_channel = balanced_accuracy_score(y_true_single_channel, y_pred_single_channel)
         
         print('***************************************************************\n', file=sys.stderr)
         print(f'Epoch {epoch + 1}: Validation results\n', file=sys.stderr)
         print(' -- Single channel results (no combination of channels) --\n', file=sys.stderr)
         print(f'Validation acc : {val_accuracy_single_channel}', file=sys.stderr)
         print(f'Validation macro f1-score : {fscore_single_channel}', file=sys.stderr)
+        print(f'Validation balanced accuracy: {balanced_acc_single_channel}', file=sys.stderr)
         print('Confussion matrix:', file=sys.stderr)
         print(f'{cnf_matrix}\n', file=sys.stderr)
         print('Classification report:', file=sys.stderr)
@@ -223,16 +232,16 @@ def main(args):
         print(report, file=sys.stderr)
         print('***************************************************************\n\n', file=sys.stderr)
 
-        log_file.write('%d,%g,%g,%g,%g,%g,%g\n' % (epoch, -1, training_loss,
+        log_file.write('%d,%g,%g,%g,%g,%g,%g,%g\n' % (epoch, -1, training_loss,
             val_accuracy_single_channel, fscore_single_channel,
-            val_accuracy, fscore))
+            val_accuracy, fscore, balanced_acc))
 
         log_file.flush()
 
         # Save best model
-        if (val_accuracy > best_val_acc):
-            best_val_acc = val_accuracy
-            eddl.save_net_to_onnx_file(net, f'{exp_dir}/models/best_model_epoch_{epoch:04d}_val_acc_{val_accuracy:.4f}.onnx')
+        if (balanced_acc > best_val_acc):
+            best_val_acc = balanced_acc
+            eddl.save_net_to_onnx_file(net, f'{exp_dir}/models/best_model_epoch_{epoch:04d}_val_acc_balanced_{balanced_acc:.4f}.onnx')
         
         eddl.save_net_to_onnx_file(net, f'{exp_dir}/models/last.onnx')
 
