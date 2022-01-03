@@ -328,7 +328,7 @@ if __name__ == '__main__':
                 + ' Example: experiments/detection_conv1_chb01/',
                 required=True)
 
-    parser.add_argument('--batch-size', type=int, help='Batch size. Defailt -> 20',
+    parser.add_argument('--batch-size', type=int, help='Batch size. Default -> 20',
         default=20)
 
     parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
