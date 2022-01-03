@@ -352,7 +352,7 @@ if __name__ == '__main__':
                 + ' Example: experiments/detection_recurrent_chb01_LSTM/',
                 required=True)
 
-    parser.add_argument('--batch-size', type=int, help='Batch size.',
+    parser.add_argument('--batch-size', type=int, help='Batch size. Default -> 64',
         default=64)
 
     parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 

@@ -7,7 +7,7 @@ import os
 import numpy
 from random import shuffle
 from tqdm import tqdm
-from utils.file_utils import load_file
+from file_utils import load_file
 
 
 #-------------------------------------------------------------------------------
