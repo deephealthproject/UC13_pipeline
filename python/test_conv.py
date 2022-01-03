@@ -321,15 +321,15 @@ if __name__ == '__main__':
 
     parser.add_argument('--id', help='Id of the patient.', required=True)
 
-    parser.add_argument('--model', help='Model identifier. "lstm" "gru"',
+    parser.add_argument('--model', help='Model identifier. "conv1"',
                         required=True)
 
     parser.add_argument('--dir', help='Directory of the experiment to test.'
-                + ' Example: experiments/detection_recurrent_chb01_LSTM/',
+                + ' Example: experiments/detection_conv1_chb01/',
                 required=True)
 
-    parser.add_argument('--batch-size', type=int, help='Batch size.',
-        default=64)
+    parser.add_argument('--batch-size', type=int, help='Batch size. Defailt -> 20',
+        default=20)
 
     parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
         ' Usage "--gpus 1 1" (two GPUs)', nargs="+", default=[1], type=int)
@@ -344,7 +344,7 @@ if __name__ == '__main__':
 
     # Args for the alarm function
     parser.add_argument('--inference-window', type=int, help='Length of the '
-        + 'sliding window to use after inferencing with the RNN. Default -> 20',
+        + 'sliding window to use after inferencing with the CNN. Default -> 20',
         default=20)
 
     parser.add_argument('--alpha-pos', type=float, help='Minimum rate of'

@@ -62,9 +62,10 @@ def recurrent_LSTM(input_shape, num_classes, lr, opt, filename=None, gpus=[1]):
         layer = eddl.LSTM(in_, 256)
         layer = eddl.Flatten(layer)
         layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer,  256), affine=True))
-        layer = eddl.Softmax(eddl.Dense(layer, num_classes))
+        #layer = eddl.Softmax(eddl.Dense(layer, num_classes))
+        layer = eddl.Dense(layer, 1)
         #
-        out_ = layer
+        out_ = eddl.Sigmoid(layer)
 
         net = eddl.Model([in_], [out_])
         initialize = True
@@ -82,8 +83,8 @@ def recurrent_LSTM(input_shape, num_classes, lr, opt, filename=None, gpus=[1]):
     eddl.build(
             net,
             o=optimizer,
-            lo=['softmax_cross_entropy'],
-            me=['categorical_accuracy'],
+            lo=['binary_cross_entropy'],
+            me=['binary_accuracy'],
             cs=eddl.CS_GPU(g=gpus, mem='full_mem'),
             #cs = eddl.CS_CPU(),
             init_weights=initialize
@@ -115,9 +116,10 @@ def recurrent_GRU(input_shape, num_classes, lr, opt, filename=None, gpus=[1]):
         layer = eddl.GRU(in_, 256)
         layer = eddl.Flatten(layer)
         layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer,  256), affine=True))
-        layer = eddl.Softmax(eddl.Dense(layer, num_classes))
+        #layer = eddl.Softmax(eddl.Dense(layer, num_classes))
+        layer = eddl.Dense(layer, 1)
         #
-        out_ = layer
+        out_ = eddl.Sigmoid(layer)
 
         net = eddl.Model([in_], [out_])
         initialize = True
@@ -133,8 +135,8 @@ def recurrent_GRU(input_shape, num_classes, lr, opt, filename=None, gpus=[1]):
     eddl.build(
             net,
             o=optimizer,
-            lo=['softmax_cross_entropy'],
-            me=['categorical_accuracy'],
+            lo=['binary_cross_entropy'],
+            me=['binary_accuracy'],
             cs=eddl.CS_GPU(g=gpus, mem='full_mem'),
             #cs = eddl.CS_CPU(),
             init_weights=initialize
