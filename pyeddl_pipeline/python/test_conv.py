@@ -138,7 +138,7 @@ def calculate_detection_metrics(y_true,
                 raise Exception(f'Unexpected value for ground truth {y_true[i-1]}')
             #
 
-        elif positive_ratio <= alpha_neg and current_state == 1:
+        elif positive_ratio < alpha_neg and current_state == 1:
             # Trigger transition from ictal to normal
             current_state = 0
 
@@ -154,7 +154,7 @@ def calculate_detection_metrics(y_true,
         #print(positive_ratio, current_state, y_pred[i-1], y_true[i-1])
     #
 
-    print(f'Num seizures: {num_seizures}', file=sys.stderr)
+    #print(f'Num seizures: {num_seizures}', file=sys.stderr)
 
     # Results at sliding window level
     y_true_window = numpy.array(y_true_window) * 1.0
@@ -170,9 +170,10 @@ def calculate_detection_metrics(y_true,
         average_latency = sum(latencies) / len(latencies)
         recall = len(latencies) / num_seizures  # Recall
 
-    false_positives_per_hour = false_positives / (len(y_pred) * sample_shift)
+    hours = (len(y_pred) * sample_shift / 3600)
+    false_positives_per_hour = false_positives / hours
 
-    return accuracy_window, average_latency, false_positives_per_hour, recall
+    return accuracy_window, average_latency, false_positives_per_hour, recall, num_seizures, hours
 
 
 
@@ -272,7 +273,7 @@ def main(args):
     fscore = f1_score(y_true, y_pred, labels=[0, 1], average='macro')
     balanced_acc = balanced_accuracy_score(y_true, y_pred)
 
-    print(f' -- Patient {patient_id} test results --')
+    print(f' -- Patient {patient_id} test results --', file=sys.stderr)
     print(f'Model:  {best_model_name}\n', file=sys.stderr)
     print(f'Test accuracy : {test_accuracy}', file=sys.stderr)
     print(f'Test macro f1-score : {fscore}', file=sys.stderr)
@@ -285,21 +286,23 @@ def main(args):
     print('\n--------------------------------------------------------------\n', file=sys.stderr)
 
     # Calculate and print other metrics: 
-    acc_window, latency, fp_h, recall = calculate_detection_metrics(
-                                        y_true,
-                                        y_pred,
-                                        sample_shift=args.shift,
-                                        sliding_window_length=args.inference_window,
-                                        alpha_pos=args.alpha_pos,
-                                        alpha_neg=args.alpha_neg,
-                                        detection_threshold=args.detection_threshold
-                                        )
+    acc_window, latency, fp_h, recall, num_seizures, hours = calculate_detection_metrics(
+                                                            y_true,
+                                                            y_pred,
+                                                            sample_shift=args.shift,
+                                                            sliding_window_length=args.inference_window,
+                                                            alpha_pos=args.alpha_pos,
+                                                            alpha_neg=args.alpha_neg,
+                                                            detection_threshold=args.detection_threshold
+                                                            )
 
-    print('Global metrics after inference\n\n', file=sys.stderr)
-    print(f'Accuracy of the sliding window: {acc_window * 100.0:.4f}', file=sys.stderr)
-    print(f'Percentage of detected seizures: {recall * 100.0:.4f}', file=sys.stderr)
+    print(' -- Global metrics after inference -- \n\n', file=sys.stderr)
+    print(f'Accuracy of the sliding window: {acc_window * 100.0:.2f}', file=sys.stderr)
+    print(f'Number of seizures: {num_seizures}', file=sys.stderr)
+    print(f'Percentage of detected seizures: {recall * 100.0:.2f}', file=sys.stderr)
     print(f'Average latency: {latency} seconds', file=sys.stderr)
     print(f'False Alarms per Hour: {fp_h}', file=sys.stderr)
+    print(f'Number of hours: {hours:.2f}', file=sys.stderr)
 
     print('***************************************************************\n\n', file=sys.stderr)
 
@@ -316,48 +319,56 @@ if __name__ == '__main__':
         + 'returning the obtained metrics.', 
         formatter_class=argparse.RawTextHelpFormatter)
 
-    parser.add_argument('--index', help='Index filename to use for test.',
+    general_args = parser.add_argument_group("General Arguments")
+
+    dg_args = parser.add_argument_group("Data Loader Arguments")
+
+    post_inference_args = parser.add_argument_group("Post Inference Process Arguments")
+
+
+    general_args.add_argument('--index', help='Index filename to use for test.',
                         required=True)
 
-    parser.add_argument('--id', help='Id of the patient.', required=True)
+    general_args.add_argument('--id', help='Id of the patient.', required=True)
 
-    parser.add_argument('--model', help='Model identifier. "conv1"',
+    general_args.add_argument('--model', help='Model identifier. "conv1"',
                         required=True)
 
-    parser.add_argument('--dir', help='Directory of the experiment to test.'
+    general_args.add_argument('--dir', help='Directory of the experiment to test.'
                 + ' Example: experiments/detection_conv1_chb01/',
                 required=True)
 
-    parser.add_argument('--batch-size', type=int, help='Batch size. Default -> 20',
+    general_args.add_argument('--batch-size', type=int, help='Batch size. Default -> 20',
         default=20)
 
-    parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
+    general_args.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
         ' Usage "--gpus 1 1" (two GPUs)', nargs="+", default=[1], type=int)
 
     # Arguments of the data generator
-    parser.add_argument('--window-length', type=float, help='Window length '
+    dg_args.add_argument('--window-length', type=float, help='Window length '
     + ' in seconds. Default -> 1', default=1)
 
-    parser.add_argument('--shift', type=float, help='Window shift '
+    dg_args.add_argument('--shift', type=float, help='Window shift '
     + ' in seconds. Default -> 0.5', default=0.5)
 
 
     # Args for the alarm function
-    parser.add_argument('--inference-window', type=int, help='Length of the '
-        + 'sliding window to use after inferencing with the CNN. Default -> 20',
+    post_inference_args.add_argument('--inference-window', type=int, help='Length of the '
+        + 'sliding window to use for the post-inference process. Default -> 20',
         default=20)
 
-    parser.add_argument('--alpha-pos', type=float, help='Minimum rate of'
+    post_inference_args.add_argument('--alpha-pos', type=float, help='Minimum rate of'
         + ' positive predicted samples in the sliding window for triggering'
-        + ' a transition between normal state to ictal state. Default -> 0.4',
-        default=0.4)
+        + ' a transition between normal state to ictal state during the '
+        + 'post-inference process. Default -> 0.4', default=0.4)
     
-    parser.add_argument('--alpha-neg', type=float, help='Maximum rate of'
+    post_inference_args.add_argument('--alpha-neg', type=float, help='Maximum rate of'
         + ' positive predicted samples in the sliding window for triggering'
-        + ' a transition between normal state to ictal state. Default -> 0.4',
+        + ' a transition between normal state to ictal state during the '
+        + 'post-inference process. Default -> 0.4',
         default=0.4)
 
-    parser.add_argument('--detection-threshold', type=int, help='Number of '
+    post_inference_args.add_argument('--detection-threshold', type=int, help='Number of '
         + 'seconds from the seizure onset to allow the detection. Default -> 20',
         default=20)
 

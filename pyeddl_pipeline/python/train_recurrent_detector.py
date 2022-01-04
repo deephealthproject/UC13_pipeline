@@ -260,45 +260,52 @@ if __name__ == '__main__':
         ' to detect epilepsy on UC13.',
         formatter_class=argparse.RawTextHelpFormatter)
 
-    parser.add_argument('--index', help='Index filename to use.', required=True)
+    general_args = parser.add_argument_group("General Arguments")
 
-    parser.add_argument('--index-val', help='Index filename to use for validation.', required=True)
+    dg_args = parser.add_argument_group("Data Loader Arguments")
 
-    parser.add_argument('--id', help='Id of the patient.', required=True)
+    resume_args = parser.add_argument_group("Arguments to resume an experiment (Optional)")
 
-    parser.add_argument('--model', help='Model id to use: "lstm", "gru".',
+
+    general_args.add_argument('--index', help='Index filename to use.', required=True)
+
+    general_args.add_argument('--index-val', help='Index filename to use for validation.', required=True)
+
+    general_args.add_argument('--id', help='Id of the patient.', required=True)
+
+    general_args.add_argument('--model', help='Model id to use: "lstm", "gru".',
                          default='lstm')
 
-    parser.add_argument('--epochs', type=int, help='Number of epochs to' +
+    general_args.add_argument('--epochs', type=int, help='Number of epochs to' +
          ' perform. Default -> 10', default=10)
     
-    parser.add_argument('--batch-size', type=int, help='Batch size. Default -> 64',
+    general_args.add_argument('--batch-size', type=int, help='Batch size. Default -> 64',
         default=64)
 
-    parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
+    general_args.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
         ' Usage "--gpus 1 1" (two GPUs)', nargs="+", default=[1], type=int)
 
-    parser.add_argument('--lr', type=float, help='Initial learning rate. Default -> 0.0001',
+    general_args.add_argument('--lr', type=float, help='Initial learning rate. Default -> 0.0001',
         default=0.0001)
 
-    parser.add_argument('--opt', help='Optimizer: "adam", "sgd". Default -> adam',
+    general_args.add_argument('--opt', help='Optimizer: "adam", "sgd". Default -> adam',
         default='adam')
 
     # Arguments of the data generator
-    parser.add_argument('--window-length', type=float, help='Window length '
+    dg_args.add_argument('--window-length', type=float, help='Window length '
     + ' in seconds. Default -> 1', default=1)
 
-    parser.add_argument('--shift', type=float, help='Window shift '
+    dg_args.add_argument('--shift', type=float, help='Window shift '
     + ' in seconds. Default -> 0.5', default=0.5)
 
-    parser.add_argument('--timesteps', type=int, help='Timesteps to use as a '
+    dg_args.add_argument('--timesteps', type=int, help='Timesteps to use as a '
     + ' sequence. Default -> 19', default=19)
 
     # Arguments to resume an experiment
-    parser.add_argument('--resume', help='Directory of the experiment dir to resume. (optional)',
+    resume_args.add_argument('--resume', help='Directory of the experiment dir to resume.',
                 default=None)
 
-    parser.add_argument('--starting-epoch', help='Number of the epoch to start ' + 
+    resume_args.add_argument('--starting-epoch', help='Number of the epoch to start ' + 
                         'the training again. (--epochs must be the total ' +
                         'number of epochs to be done, including the epochs ' +
                         'already done before resuming)', type=int, default=0)
