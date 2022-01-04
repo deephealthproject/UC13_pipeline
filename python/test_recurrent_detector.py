@@ -18,7 +18,7 @@ from models import create_model
 from data_utils_detection import RawRecurrentDataGenerator
 from pyeddl import eddl
 from pyeddl.tensor import Tensor
-from sklearn.metrics import f1_score, confusion_matrix, classification_report
+from sklearn.metrics import f1_score, confusion_matrix, classification_report, balanced_accuracy_score
 
 
 
@@ -254,18 +254,25 @@ def main(args):
             (y_pred, ) = eddl.predict(net, [channel_tensor_batch])
 
             y_pred = y_pred.getdata()
+            y_pred = y_pred.ravel()
             
             channels_y_pred.append(y_pred)
-            Y_pred_single_channel += y_pred.argmax(axis=1).tolist()
-            Y_true_single_channel += y.tolist()
+            y_pred[y_pred >= 0.5] = 1
+            y_pred[y_pred < 0.5] = 0
+
+            Y_pred_single_channel += y_pred.astype(int).tolist()
+            Y_true_single_channel += y.ravel().astype(int).tolist()
         
         channels_y_pred = numpy.array(channels_y_pred)
-        # (23, batch_size, 2)
+        # (23, batch_size)
         channels_y_pred = numpy.sum(channels_y_pred, axis=0)
-        # print(channels_y_pred.shape) -> (batch_size, 2)
-        
-        Y_true += y.tolist()
-        Y_pred += channels_y_pred.argmax(axis=1).tolist()
+        channels_y_pred = channels_y_pred / 23.0
+        # print(channels_y_pred.shape) -> (batch_size)
+        channels_y_pred[channels_y_pred >= 0.5] = 1
+        channels_y_pred[channels_y_pred < 0.5] = 0
+
+        Y_true += y.ravel().astype(int).tolist()
+        Y_pred += channels_y_pred.astype(int).tolist()
     #
 
     y_true = numpy.array(Y_true) * 1.0
@@ -280,12 +287,14 @@ def main(args):
     cnf_matrix = confusion_matrix(y_true_single_channel, y_pred_single_channel)
     report = classification_report(y_true_single_channel, y_pred_single_channel)
     fscore_single_channel = f1_score(y_true_single_channel, y_pred_single_channel, labels=[0, 1], average='macro')
+    balanced_acc_single_channel = balanced_accuracy_score(y_true_single_channel, y_pred_single_channel)
     
     print('***************************************************************\n', file=sys.stderr)
     print(f'Test results\n', file=sys.stderr)
     print(' -- Single channel results (no combination of channels) --\n', file=sys.stderr)
     print(f'Test accuracy : {test_accuracy_single_channel}', file=sys.stderr)
     print(f'Test macro f1-score : {fscore_single_channel}', file=sys.stderr)
+    print(f'Validation balanced accuracy: {balanced_acc_single_channel}', file=sys.stderr)
     print('Confussion matrix:', file=sys.stderr)
     print(f'{cnf_matrix}\n', file=sys.stderr)
     print('Classification report:', file=sys.stderr)
@@ -297,10 +306,12 @@ def main(args):
     cnf_matrix = confusion_matrix(y_true, y_pred)
     report = classification_report(y_true, y_pred)
     fscore = f1_score(y_true, y_pred, labels=[0, 1], average='macro')
+    balanced_acc = balanced_accuracy_score(y_true, y_pred)
 
     print(' -- All channels involved (combined for each timestamp) --\n', file=sys.stderr)
     print(f'Test accuracy : {test_accuracy}', file=sys.stderr)
     print(f'Test macro f1-score : {fscore}', file=sys.stderr)
+    print(f'Validation balanced acc : {balanced_acc}', file=sys.stderr)
     print('Confussion matrix:', file=sys.stderr)
     print(f'{cnf_matrix}\n', file=sys.stderr)
     print('Classification report:', file=sys.stderr)
@@ -312,7 +323,7 @@ def main(args):
     acc_window, latency, fp_h, recall = calculate_detection_metrics(
                                         y_true,
                                         y_pred,
-                                        sample_shift=args.sample_shift,
+                                        sample_shift=args.shift,
                                         sliding_window_length=args.inference_window,
                                         alpha_pos=args.alpha_pos,
                                         alpha_neg=args.alpha_neg,

@@ -71,7 +71,7 @@ def main(args):
     
     log_file = open(f'{exp_dir}/training_log.txt', 'w')
     log_file.write('epoch, train_acc, train_loss, val_acc_single_channel,'
-        + ' val_f1score_single_channel, val_acc, val_f1score\n')
+        + ' val_f1score_single_channel, val_acc, val_f1score, val_balanced_acc\n')
     log_file.flush()
 
     # Data Generator Object for training
@@ -177,6 +177,7 @@ def main(args):
 
                 y_pred[y_pred >= 0.5] = 1
                 y_pred[y_pred < 0.5] = 0
+                
                 Y_pred_single_channel += y_pred.astype(int).tolist()
                 Y_true_single_channel += y.ravel().astype(int).tolist()
 
