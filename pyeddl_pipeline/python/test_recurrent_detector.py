@@ -268,6 +268,8 @@ def main(args):
         channels_y_pred = numpy.sum(channels_y_pred, axis=0)
         channels_y_pred = channels_y_pred / 23.0
         # print(channels_y_pred.shape) -> (batch_size)
+        channels_y_pred[channels_y_pred >= 0.5] = 1
+        channels_y_pred[channels_y_pred < 0.5] = 0
 
         Y_true += y.ravel().astype(int).tolist()
         Y_pred += channels_y_pred.astype(int).tolist()
