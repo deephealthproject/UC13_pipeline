@@ -1,5 +1,5 @@
 """
-    Script for testing recurrent neural network models to perform
+    Script for testing convolutional neural network models to perform
     the detection of Epilepsy Seizures on a EEG signal. This task is part of the
     Use Case 13 of DeepHealth project. 
 
@@ -275,9 +275,9 @@ def main(args):
 
     print(f' -- Patient {patient_id} test results --', file=sys.stderr)
     print(f'Model:  {best_model_name}\n', file=sys.stderr)
-    print(f'Test accuracy : {test_accuracy}', file=sys.stderr)
-    print(f'Test macro f1-score : {fscore}', file=sys.stderr)
-    print(f'Test balanced acc : {balanced_acc}', file=sys.stderr)
+    print(f'Test accuracy : {test_accuracy * 100.0:.2f}', file=sys.stderr)
+    print(f'Test macro f1-score : {fscore:.4f}', file=sys.stderr)
+    print(f'Test balanced acc : {balanced_acc * 100.0:.2f}', file=sys.stderr)
     print('Confussion matrix:', file=sys.stderr)
     print(f'{cnf_matrix}\n', file=sys.stderr)
     print('Classification report:', file=sys.stderr)
@@ -296,12 +296,12 @@ def main(args):
                                                             detection_threshold=args.detection_threshold
                                                             )
 
-    print(' -- Global metrics after inference -- \n\n', file=sys.stderr)
-    print(f'Accuracy of the sliding window: {acc_window * 100.0:.2f}', file=sys.stderr)
+    print(' -- Post-Inference results -- \n\n', file=sys.stderr)
+    print(f'Accuracy of the post-inference window: {acc_window * 100.0:.2f} %', file=sys.stderr)
     print(f'Number of seizures: {num_seizures}', file=sys.stderr)
-    print(f'Percentage of detected seizures: {recall * 100.0:.2f}', file=sys.stderr)
+    print(f'Percentage of detected seizures: {recall * 100.0:.2f} %', file=sys.stderr)
     print(f'Average latency: {latency} seconds', file=sys.stderr)
-    print(f'False Alarms per Hour: {fp_h}', file=sys.stderr)
+    print(f'False Alarms per Hour: {fp_h:.2f}', file=sys.stderr)
     print(f'Number of hours: {hours:.2f}', file=sys.stderr)
 
     print('***************************************************************\n\n', file=sys.stderr)

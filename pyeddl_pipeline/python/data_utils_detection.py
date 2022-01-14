@@ -109,7 +109,7 @@ class RawRecurrentDataGenerator:
         num_ictal = 0
         num_interictal = 0
 
-        print("Loading EDF signals...")
+        print('Loading EDF signals...')
         for i in tqdm(range(len(self.filenames))):
             d_p = load_file(self.filenames[i],
                             exclude_seizures = False,
@@ -200,8 +200,6 @@ class RawRecurrentDataGenerator:
         print('Signals loaded!')
         print('\n-----------------------------------------------------------\n')
         print(f'Number of seizures available: {self.num_seizures}')
-        #if self.num_seizures < 3:
-        #    raise Exception('Not enough seizures, please try other patient.')
 
         print(f'Number of samples (not sequences): {num_ictal + num_interictal}')
         print(f'Interictal samples: {num_interictal} ({(num_interictal / (num_ictal + num_interictal) * 100):.2f} %)')
@@ -253,7 +251,6 @@ class RawRecurrentDataGenerator:
             del array
             gc.collect()
         #
-        #self.shuffle_data()
 
 
     def __len__(self):
@@ -317,9 +314,8 @@ class RawRecurrentDataGenerator:
 
                 for i in numpy.arange(t, t + (self.timesteps + 1) * self.sample_shift, step = self.sample_shift):
                     sequence_samples.append(self.data[fi][i : i + self.sampling_rate, :])
-                    #label = self.labels[fi][i + self.sampling_rate - 1]
                 
-                label = 0 # It always will be 0 here
+                label = 0 # It will always be 0 here
 
                 X.append(sequence_samples)
                 Y.append(label)
@@ -337,9 +333,8 @@ class RawRecurrentDataGenerator:
 
                 for i in numpy.arange(t, t + (self.timesteps + 1) * self.sample_shift, step = self.sample_shift):
                     sequence_samples.append(self.data[fi][i : i + self.sampling_rate, :])
-                    #label = self.labels[fi][i + self.sampling_rate - 1]
                 
-                label = 1 # It always will be 1 here
+                label = 1 # It will always be 1 here
 
                 X.append(sequence_samples)
                 Y.append(label)
@@ -351,7 +346,6 @@ class RawRecurrentDataGenerator:
 
                 sequence_samples = list()
                 # 'fi' is the index of the file in self.data, self.file_indexes and self.labels
-                #fi, channel, t = self.sequences_indexes[idx]
                 
                 if self.in_training_mode:
                     # Fill last batch with samples that have already been passed
@@ -361,17 +355,15 @@ class RawRecurrentDataGenerator:
 
                     for i in numpy.arange(t, t + (self.timesteps + 1) * self.sample_shift, step = self.sample_shift):
                         sequence_samples.append(self.data[fi][i : i + self.sampling_rate, :])
-                        #label = self.labels[fi][i + self.sampling_rate - 1]
                 
                 else:
                     # Do not drop last batch. It will have less samples than batch-size
-                    # This will be done when validation and test
+                    # This will be done on validation and test
                     if idx < len(self.sequences_indexes):
                         fi, t, label = self.sequences_indexes[idx]
 
                         for i in numpy.arange(t, t + (self.timesteps + 1) * self.sample_shift, step = self.sample_shift):
                             sequence_samples.append(self.data[fi][i : i + self.sampling_rate, :])
-                            #label = self.labels[fi][i + self.sampling_rate - 1]
                 #
 
                 if len(sequence_samples) > 0:
@@ -387,14 +379,8 @@ class RawRecurrentDataGenerator:
             X = (X - self.mean) / self.std
         
         if X.min() < -20. or X.max() > 20.:
-            #print("#  ", file = sys.stderr)
-            #print("#  WARNING: too large values after scaling while getting batch %d" % batch_index, file = sys.stderr)
-            #print("#  min value = %g" % X.min(), file = sys.stderr)
-            #print("#  max value = %g" % X.max(), file = sys.stderr)
             X = numpy.minimum(X,  20.)
             X = numpy.maximum(X, -20.)
-            #print("#  values of all the samples in this batch clipped, current limits are [%f, %f]" % (X.min(), X.max()), file = sys.stderr)
-            #print("#  ", file = sys.stderr)
         #
         Y = numpy.reshape(Y, (Y.shape[0], 1))
 
@@ -421,7 +407,7 @@ class RawDataGenerator:
         '''
 
             Constructor to create objects of the class **DataGenerator** and
-            loads all the data.
+            load all the data.
 
             Parameters
             ----------
@@ -481,7 +467,7 @@ class RawDataGenerator:
 
         self.num_samples = [0, 0] # [class_0, class_1]
 
-        print("Loading EDF signals...")
+        print('Loading EDF signals...')
         for file_index in tqdm(range(len(self.filenames))):
             recording = load_file(self.filenames[file_index],
                             exclude_seizures=False,
@@ -670,8 +656,8 @@ class RawDataGenerator2:
                  patient_id=None):
         '''
 
-            Constructor to create objects of the class **DataGenerator** and
-            loads all the data.
+            Constructor to create objects of the class **DataGenerator2** and
+            load all the data.
 
             This generator does not separate the signals in classes before
             extracting windows. There will be windows with samples of both
@@ -735,7 +721,7 @@ class RawDataGenerator2:
 
         self.num_samples = [0, 0] # [class_0, class_1]
 
-        print("Loading EDF signals...")
+        print('Loading EDF signals...')
         for file_index in tqdm(range(len(self.filenames))):
 
             recording = load_file(self.filenames[file_index],

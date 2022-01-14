@@ -125,12 +125,6 @@ def main(args):
             # Load batch of data
             x, y = dg[i]
 
-            #_y_ = numpy.zeros([len(y), 2])
-            #for i in range(2):
-            #    _y_[y == i, i] = 1
-            #_y_ = _y_.reshape((len(y), 1, 2))
-            #y = Tensor.fromarray(_y_)
-
             y = Tensor.fromarray(y.reshape((len(y), 1, 1)))
 
             for channel in range(x.shape[3]):
@@ -207,9 +201,9 @@ def main(args):
         print('***************************************************************\n', file=sys.stderr)
         print(f'Epoch {epoch + 1}: Validation results\n', file=sys.stderr)
         print(' -- Single channel results (no combination of channels) --\n', file=sys.stderr)
-        print(f'Validation acc : {val_accuracy_single_channel}', file=sys.stderr)
-        print(f'Validation macro f1-score : {fscore_single_channel}', file=sys.stderr)
-        print(f'Validation balanced accuracy: {balanced_acc_single_channel}', file=sys.stderr)
+        print(f'Validation acc : {val_accuracy_single_channel * 100.0:.2f}', file=sys.stderr)
+        print(f'Validation macro f1-score : {fscore_single_channel:.4f}', file=sys.stderr)
+        print(f'Validation balanced accuracy: {balanced_acc_single_channel * 100.0:.2f}', file=sys.stderr)
         print('Confussion matrix:', file=sys.stderr)
         print(f'{cnf_matrix}\n', file=sys.stderr)
         print('Classification report:', file=sys.stderr)
@@ -224,9 +218,9 @@ def main(args):
         balanced_acc = balanced_accuracy_score(y_true, y_pred)
 
         print(' -- All channels involved (combined for each timestamp) --\n', file=sys.stderr)
-        print(f'Validation acc : {val_accuracy}', file=sys.stderr)
-        print(f'Validation macro f1-score : {fscore}', file=sys.stderr)
-        print(f'Validation balanced acc : {balanced_acc}', file=sys.stderr)
+        print(f'Validation acc : {val_accuracy * 100.0:.2f}', file=sys.stderr)
+        print(f'Validation macro f1-score : {fscore:.4f}', file=sys.stderr)
+        print(f'Validation balanced acc : {balanced_acc * 100.0:.2f}', file=sys.stderr)
         print('Confussion matrix:', file=sys.stderr)
         print(f'{cnf_matrix}\n', file=sys.stderr)
         print('Classification report:', file=sys.stderr)
