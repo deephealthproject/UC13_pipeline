@@ -135,14 +135,14 @@ def main(args):
                 eddl.train_batch(net, [channel_tensor_batch], [y])
 
                 losses = eddl.get_losses(net)
-                #metrics = eddl.get_metrics(net)
+                metrics = eddl.get_metrics(net)
 
-                pbar.set_description(f'Training[loss={losses[0]:.5f}, acc=Not Available]')
+                pbar.set_description(f'Training[loss={losses[0]:.5f}, acc={metrics[0]:.5f}]')
 
         print()
 
         training_loss = losses[0]
-
+        training_acc = metrics[0]
         
         # VALIDATION
         print(f'\nValidation epoch {epoch+1}', file=sys.stderr)
@@ -227,7 +227,7 @@ def main(args):
         print(report, file=sys.stderr)
         print('***************************************************************\n\n', file=sys.stderr)
 
-        log_file.write('%d,%g,%g,%g,%g,%g,%g,%g\n' % (epoch, -1, training_loss,
+        log_file.write('%d,%g,%g,%g,%g,%g,%g,%g\n' % (epoch, training_acc, training_loss,
             val_accuracy_single_channel, fscore_single_channel,
             val_accuracy, fscore, balanced_acc))
 

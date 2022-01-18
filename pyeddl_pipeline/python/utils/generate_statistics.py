@@ -6,7 +6,7 @@ from file_utils import load_file
 #-------------------------------------------------------------------------------
 
 
-def generate_stats(index_filename, patient_id):
+def generate_stats(index_filenames, patient_id):
     """
     Reads an index file of a patient and prints the number of seizures,
     the number of ictal hours and the number of interictal hours.
@@ -25,13 +25,13 @@ def generate_stats(index_filename, patient_id):
     """
     #
     filenames = list()
-    
-    with open(index_filename, 'r') as f:
-        for l in f:
-            if l[0] != '#':
-                filenames.append(l.strip())
-        f.close()
-    #
+    for index_filename in index_filenames:
+        with open(index_filename, 'r') as f:
+            for l in f:
+                if l[0] != '#':
+                    filenames.append(l.strip())
+            f.close()
+        #
     num_files = len(filenames)
     num_seizures = 0
 
@@ -77,7 +77,10 @@ def generate_stats(index_filename, patient_id):
 
 if __name__ == '__main__':
 
-    for patient in range(5,25):
+    for patient in [3, 5, 8, 12, 14, 15, 24]:
         patient_id = 'chb' + ('0' + str(patient))[-2:]
-        filename = 'etc/index_' + patient_id + '.txt'
-        generate_stats(filename, patient_id)
+        filenames = []
+        filenames.append(f'../indexes_detection/{patient_id}/train.txt')
+        filenames.append(f'../indexes_detection/{patient_id}/validation.txt')
+        filenames.append(f'../indexes_detection/{patient_id}/test.txt')
+        generate_stats(filenames, patient_id)

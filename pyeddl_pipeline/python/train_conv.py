@@ -143,13 +143,14 @@ def main(args):
             eddl.train_batch(net, [x], [y])
 
             losses = eddl.get_losses(net)
-            #metrics = eddl.get_metrics(net)
+            metrics = eddl.get_metrics(net)
 
-            pbar.set_description(f'Training[loss={losses[0]:.5f}, acc=Not Available]')
+            pbar.set_description(f'Training[loss={losses[0]:.5f}, acc={metrics[0]:.5f}]')
 
         print()
 
         training_loss = losses[0]
+        training_acc = metrics[0]
         
         # VALIDATION
         print(f'\nValidation epoch {epoch+1}', file=sys.stderr)
@@ -188,9 +189,9 @@ def main(args):
         print('***************************************************************\n', file=sys.stderr)
         print(f'Epoch {epoch + 1}: Validation results\n', file=sys.stderr)
         print(' -- Single channel results (no combination of channels) --\n', file=sys.stderr)
-        print(f'Validation acc : {val_accuracy * 100.0:.2f}', file=sys.stderr)
+        print(f'Validation acc : {val_accuracy * 100.0:.2f} %', file=sys.stderr)
         print(f'Validation macro f1-score : {fscore:.4f}', file=sys.stderr)
-        print(f'Validation balanced acc : {balanced_acc * 100.0:.2f}', file=sys.stderr)
+        print(f'Validation balanced acc : {balanced_acc * 100.0:.2f} %', file=sys.stderr)
         print('Confussion matrix:', file=sys.stderr)
         print(f'{cnf_matrix}\n', file=sys.stderr)
         print('Classification report:', file=sys.stderr)
@@ -199,7 +200,7 @@ def main(args):
         print('\n--------------------------------------------------------------\n', file=sys.stderr)
 
 
-        log_file.write('%d,%g,%g,%g,%g,%g\n' % (epoch, -1, training_loss,
+        log_file.write('%d,%g,%g,%g,%g,%g\n' % (epoch, training_acc, training_loss,
             val_accuracy, fscore, balanced_acc))
 
         log_file.flush()
@@ -258,10 +259,10 @@ if __name__ == '__main__':
 
     # Arguments of the data generator
     dg_args.add_argument('--window-length', type=float, help='Window length '
-    + ' in seconds. Default -> 1', default=10)
+    + ' in seconds. Default -> 10', default=10)
 
     dg_args.add_argument('--shift', type=float, help='Window shift '
-    + ' in seconds. Default -> 0.5', default=0.25)
+    + ' in seconds. Default -> 0.25', default=0.25)
 
 
     # Arguments to resume an experiment

@@ -275,9 +275,9 @@ def main(args):
 
     print(f' -- Patient {patient_id} test results --', file=sys.stderr)
     print(f'Model:  {best_model_name}\n', file=sys.stderr)
-    print(f'Test accuracy : {test_accuracy * 100.0:.2f}', file=sys.stderr)
+    print(f'Test accuracy : {test_accuracy * 100.0:.2f} %', file=sys.stderr)
     print(f'Test macro f1-score : {fscore:.4f}', file=sys.stderr)
-    print(f'Test balanced acc : {balanced_acc * 100.0:.2f}', file=sys.stderr)
+    print(f'Test balanced acc : {balanced_acc * 100.0:.2f} %', file=sys.stderr)
     print('Confussion matrix:', file=sys.stderr)
     print(f'{cnf_matrix}\n', file=sys.stderr)
     print('Classification report:', file=sys.stderr)
@@ -300,7 +300,7 @@ def main(args):
     print(f'Accuracy of the post-inference window: {acc_window * 100.0:.2f} %', file=sys.stderr)
     print(f'Number of seizures: {num_seizures}', file=sys.stderr)
     print(f'Percentage of detected seizures: {recall * 100.0:.2f} %', file=sys.stderr)
-    print(f'Average latency: {latency} seconds', file=sys.stderr)
+    print(f'Average latency: {latency:.2f} seconds', file=sys.stderr)
     print(f'False Alarms per Hour: {fp_h:.2f}', file=sys.stderr)
     print(f'Number of hours: {hours:.2f}', file=sys.stderr)
 
@@ -346,10 +346,10 @@ if __name__ == '__main__':
 
     # Arguments of the data generator
     dg_args.add_argument('--window-length', type=float, help='Window length '
-    + ' in seconds. Default -> 1', default=1)
+    + ' in seconds. Default -> 10', default=10)
 
     dg_args.add_argument('--shift', type=float, help='Window shift '
-    + ' in seconds. Default -> 0.5', default=0.5)
+    + ' in seconds. Default -> 0.25', default=0.25)
 
 
     # Args for the alarm function
