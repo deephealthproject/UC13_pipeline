@@ -143,13 +143,14 @@ def main(args):
             eddl.train_batch(net, [x], [y])
 
             losses = eddl.get_losses(net)
-            #metrics = eddl.get_metrics(net)
+            metrics = eddl.get_metrics(net)
 
-            pbar.set_description(f'Training[loss={losses[0]:.5f}, acc=Not Available]')
+            pbar.set_description(f'Training[loss={losses[0]:.5f}, acc={metrics[0]:.5f}]')
 
         print()
 
         training_loss = losses[0]
+        training_acc = metrics[0]
         
         # VALIDATION
         print(f'\nValidation epoch {epoch+1}', file=sys.stderr)
@@ -188,9 +189,9 @@ def main(args):
         print('***************************************************************\n', file=sys.stderr)
         print(f'Epoch {epoch + 1}: Validation results\n', file=sys.stderr)
         print(' -- Single channel results (no combination of channels) --\n', file=sys.stderr)
-        print(f'Validation acc : {val_accuracy}', file=sys.stderr)
-        print(f'Validation macro f1-score : {fscore}', file=sys.stderr)
-        print(f'Validation balanced acc : {balanced_acc}', file=sys.stderr)
+        print(f'Validation acc : {val_accuracy * 100.0:.2f} %', file=sys.stderr)
+        print(f'Validation macro f1-score : {fscore:.4f}', file=sys.stderr)
+        print(f'Validation balanced acc : {balanced_acc * 100.0:.2f} %', file=sys.stderr)
         print('Confussion matrix:', file=sys.stderr)
         print(f'{cnf_matrix}\n', file=sys.stderr)
         print('Classification report:', file=sys.stderr)
@@ -199,7 +200,7 @@ def main(args):
         print('\n--------------------------------------------------------------\n', file=sys.stderr)
 
 
-        log_file.write('%d,%g,%g,%g,%g,%g\n' % (epoch, -1, training_loss,
+        log_file.write('%d,%g,%g,%g,%g,%g\n' % (epoch, training_acc, training_loss,
             val_accuracy, fscore, balanced_acc))
 
         log_file.flush()
@@ -223,53 +224,54 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for training models' + 
         ' to detect Epilepsy Seizures.')
 
-    parser.add_argument('--index', help='Index of recordings to use for training. ' + 
+    general_args = parser.add_argument_group("General Arguments")
+
+    dg_args = parser.add_argument_group("Data Loader Arguments")
+
+    resume_args = parser.add_argument_group("Arguments to resume an experiment (Optional)")
+
+    general_args.add_argument('--index', help='Index of recordings to use for training. ' + 
                         'Example: "../indexes_detection/chb01/train.txt"')
 
-    parser.add_argument('--index-val', help='Index of recordings to use for validation. ' + 
+    general_args.add_argument('--index-val', help='Index of recordings to use for validation. ' + 
                         'Example: "../indexes_detection/chb01/validation.txt"')
     
-    parser.add_argument('--id', help='Id of the patient, e.g. "chb01".', required=True)
+    general_args.add_argument('--id', help='Id of the patient, e.g. "chb01".', required=True)
 
-    parser.add_argument('--model', help='Model id to use: "conv1".',
+    general_args.add_argument('--model', help='Model id to use: "conv1".',
                          default='conv1')
 
-    parser.add_argument('--epochs', type=int, help='Number of epochs to' +
+    general_args.add_argument('--epochs', type=int, help='Number of epochs to' +
          ' perform. Default -> 10', default=1)
     
-    parser.add_argument('--batch-size', type=int, help='Batch size. Default -> 20',
+    general_args.add_argument('--batch-size', type=int, help='Batch size. Default -> 20',
         default=20)
 
-    parser.add_argument('--lr', type=float, help='Initial learning rate. Default -> 0.0001',
+    general_args.add_argument('--lr', type=float, help='Initial learning rate. Default -> 0.0001',
         default=0.0001)
 
-    parser.add_argument('--opt', help='Optimizer: "adam", "sgd". Default -> adam',
+    general_args.add_argument('--opt', help='Optimizer: "adam", "sgd". Default -> adam',
         default='adam')
 
-    parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
+    general_args.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
         ' Usage "--gpus 1 1" (two GPUs)', nargs="+", default=[1], type=int)
 
 
     # Arguments of the data generator
-    parser.add_argument('--window-length', type=float, help='Window length '
-    + ' in seconds. Default -> 1', default=10)
+    dg_args.add_argument('--window-length', type=float, help='Window length '
+    + ' in seconds. Default -> 10', default=10)
 
-    parser.add_argument('--shift', type=float, help='Window shift '
-    + ' in seconds. Default -> 0.5', default=0.25)
+    dg_args.add_argument('--shift', type=float, help='Window shift '
+    + ' in seconds. Default -> 0.25', default=0.25)
 
 
     # Arguments to resume an experiment
-    parser.add_argument('--resume', help='Directory of the experiment dir to resume.',
-                default=None)
-
-    parser.add_argument('--starting-epoch', help='Number of the epoch to start ' + 
+    resume_args.add_argument('--starting-epoch', help='Number of the epoch to start ' + 
                         'the training again. (--epochs must be the total ' +
                         'number of epochs to be done, including the epochs ' +
                         'already done before resuming)', type=int, default=0)
      
-
-    # Arguments to resume an experiment
-    parser.add_argument('--resume', help='Directory of the experiment dir to resume. (optional)',
+    resume_args.add_argument('--resume', help='Directory of the experiment dir to resume. (optional)',
                 default=None)
 
     main(parser.parse_args())

@@ -125,12 +125,6 @@ def main(args):
             # Load batch of data
             x, y = dg[i]
 
-            #_y_ = numpy.zeros([len(y), 2])
-            #for i in range(2):
-            #    _y_[y == i, i] = 1
-            #_y_ = _y_.reshape((len(y), 1, 2))
-            #y = Tensor.fromarray(_y_)
-
             y = Tensor.fromarray(y.reshape((len(y), 1, 1)))
 
             for channel in range(x.shape[3]):
@@ -141,14 +135,14 @@ def main(args):
                 eddl.train_batch(net, [channel_tensor_batch], [y])
 
                 losses = eddl.get_losses(net)
-                #metrics = eddl.get_metrics(net)
+                metrics = eddl.get_metrics(net)
 
-                pbar.set_description(f'Training[loss={losses[0]:.5f}, acc=Not Available]')
+                pbar.set_description(f'Training[loss={losses[0]:.5f}, acc={metrics[0]:.5f}]')
 
         print()
 
         training_loss = losses[0]
-
+        training_acc = metrics[0]
         
         # VALIDATION
         print(f'\nValidation epoch {epoch+1}', file=sys.stderr)
@@ -207,9 +201,9 @@ def main(args):
         print('***************************************************************\n', file=sys.stderr)
         print(f'Epoch {epoch + 1}: Validation results\n', file=sys.stderr)
         print(' -- Single channel results (no combination of channels) --\n', file=sys.stderr)
-        print(f'Validation acc : {val_accuracy_single_channel}', file=sys.stderr)
-        print(f'Validation macro f1-score : {fscore_single_channel}', file=sys.stderr)
-        print(f'Validation balanced accuracy: {balanced_acc_single_channel}', file=sys.stderr)
+        print(f'Validation acc : {val_accuracy_single_channel * 100.0:.2f}', file=sys.stderr)
+        print(f'Validation macro f1-score : {fscore_single_channel:.4f}', file=sys.stderr)
+        print(f'Validation balanced accuracy: {balanced_acc_single_channel * 100.0:.2f}', file=sys.stderr)
         print('Confussion matrix:', file=sys.stderr)
         print(f'{cnf_matrix}\n', file=sys.stderr)
         print('Classification report:', file=sys.stderr)
@@ -224,16 +218,16 @@ def main(args):
         balanced_acc = balanced_accuracy_score(y_true, y_pred)
 
         print(' -- All channels involved (combined for each timestamp) --\n', file=sys.stderr)
-        print(f'Validation acc : {val_accuracy}', file=sys.stderr)
-        print(f'Validation macro f1-score : {fscore}', file=sys.stderr)
-        print(f'Validation balanced acc : {balanced_acc}', file=sys.stderr)
+        print(f'Validation acc : {val_accuracy * 100.0:.2f}', file=sys.stderr)
+        print(f'Validation macro f1-score : {fscore:.4f}', file=sys.stderr)
+        print(f'Validation balanced acc : {balanced_acc * 100.0:.2f}', file=sys.stderr)
         print('Confussion matrix:', file=sys.stderr)
         print(f'{cnf_matrix}\n', file=sys.stderr)
         print('Classification report:', file=sys.stderr)
         print(report, file=sys.stderr)
         print('***************************************************************\n\n', file=sys.stderr)
 
-        log_file.write('%d,%g,%g,%g,%g,%g,%g,%g\n' % (epoch, -1, training_loss,
+        log_file.write('%d,%g,%g,%g,%g,%g,%g,%g\n' % (epoch, training_acc, training_loss,
             val_accuracy_single_channel, fscore_single_channel,
             val_accuracy, fscore, balanced_acc))
 
@@ -260,45 +254,52 @@ if __name__ == '__main__':
         ' to detect epilepsy on UC13.',
         formatter_class=argparse.RawTextHelpFormatter)
 
-    parser.add_argument('--index', help='Index filename to use.', required=True)
+    general_args = parser.add_argument_group("General Arguments")
 
-    parser.add_argument('--index-val', help='Index filename to use for validation.', required=True)
+    dg_args = parser.add_argument_group("Data Loader Arguments")
 
-    parser.add_argument('--id', help='Id of the patient.', required=True)
+    resume_args = parser.add_argument_group("Arguments to resume an experiment (Optional)")
 
-    parser.add_argument('--model', help='Model id to use: "lstm", "gru".',
+
+    general_args.add_argument('--index', help='Index filename to use.', required=True)
+
+    general_args.add_argument('--index-val', help='Index filename to use for validation.', required=True)
+
+    general_args.add_argument('--id', help='Id of the patient.', required=True)
+
+    general_args.add_argument('--model', help='Model id to use: "lstm", "gru".',
                          default='lstm')
 
-    parser.add_argument('--epochs', type=int, help='Number of epochs to' +
+    general_args.add_argument('--epochs', type=int, help='Number of epochs to' +
          ' perform. Default -> 10', default=10)
     
-    parser.add_argument('--batch-size', type=int, help='Batch size. Default -> 64',
+    general_args.add_argument('--batch-size', type=int, help='Batch size. Default -> 64',
         default=64)
 
-    parser.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
+    general_args.add_argument("--gpus", help='Sets the number of GPUs to use.'+ 
         ' Usage "--gpus 1 1" (two GPUs)', nargs="+", default=[1], type=int)
 
-    parser.add_argument('--lr', type=float, help='Initial learning rate. Default -> 0.0001',
+    general_args.add_argument('--lr', type=float, help='Initial learning rate. Default -> 0.0001',
         default=0.0001)
 
-    parser.add_argument('--opt', help='Optimizer: "adam", "sgd". Default -> adam',
+    general_args.add_argument('--opt', help='Optimizer: "adam", "sgd". Default -> adam',
         default='adam')
 
     # Arguments of the data generator
-    parser.add_argument('--window-length', type=float, help='Window length '
+    dg_args.add_argument('--window-length', type=float, help='Window length '
     + ' in seconds. Default -> 1', default=1)
 
-    parser.add_argument('--shift', type=float, help='Window shift '
+    dg_args.add_argument('--shift', type=float, help='Window shift '
     + ' in seconds. Default -> 0.5', default=0.5)
 
-    parser.add_argument('--timesteps', type=int, help='Timesteps to use as a '
+    dg_args.add_argument('--timesteps', type=int, help='Timesteps to use as a '
     + ' sequence. Default -> 19', default=19)
 
     # Arguments to resume an experiment
-    parser.add_argument('--resume', help='Directory of the experiment dir to resume. (optional)',
+    resume_args.add_argument('--resume', help='Directory of the experiment dir to resume.',
                 default=None)
 
-    parser.add_argument('--starting-epoch', help='Number of the epoch to start ' + 
+    resume_args.add_argument('--starting-epoch', help='Number of the epoch to start ' + 
                         'the training again. (--epochs must be the total ' +
                         'number of epochs to be done, including the epochs ' +
                         'already done before resuming)', type=int, default=0)
