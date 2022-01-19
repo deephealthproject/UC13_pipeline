@@ -238,7 +238,7 @@ if __name__ == '__main__':
     
     general_args.add_argument('--id', help='Id of the patient, e.g. "chb01".', required=True)
 
-    general_args.add_argument('--model', help='Model id to use: "conv1".',
+    general_args.add_argument('--model', help='Model id to use. Default -> "conv1" (only this model available)',
                          default='conv1')
 
     general_args.add_argument('--epochs', type=int, help='Number of epochs to' +

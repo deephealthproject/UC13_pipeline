@@ -331,8 +331,8 @@ if __name__ == '__main__':
 
     general_args.add_argument('--id', help='Id of the patient.', required=True)
 
-    general_args.add_argument('--model', help='Model identifier. "conv1"',
-                        required=True)
+    general_args.add_argument('--model', help='Model identifier. Default -> "conv1" (only this model available)',
+                        default='conv1')
 
     general_args.add_argument('--dir', help='Directory of the experiment to test.'
                 + ' Example: experiments/detection_conv1_chb01/',
