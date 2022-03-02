@@ -1,11 +1,11 @@
+../../clean_signals/chb06/chb06_01
 ../../clean_signals/chb06/chb06_02
 ../../clean_signals/chb06/chb06_03
+../../clean_signals/chb06/chb06_04
 ../../clean_signals/chb06/chb06_05
 ../../clean_signals/chb06/chb06_06
 ../../clean_signals/chb06/chb06_07
 ../../clean_signals/chb06/chb06_08
-../../clean_signals/chb06/chb06_12
-../../clean_signals/chb06/chb06_01
-../../clean_signals/chb06/chb06_04
 ../../clean_signals/chb06/chb06_09
 ../../clean_signals/chb06/chb06_10
+../../clean_signals/chb06/chb06_12

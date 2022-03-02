@@ -1,6 +1,10 @@
 ../../clean_signals/chb14/chb14_01
 ../../clean_signals/chb14/chb14_02
+../../clean_signals/chb14/chb14_03
+../../clean_signals/chb14/chb14_04
+../../clean_signals/chb14/chb14_06
 ../../clean_signals/chb14/chb14_07
+../../clean_signals/chb14/chb14_11
 ../../clean_signals/chb14/chb14_12
 ../../clean_signals/chb14/chb14_13
 ../../clean_signals/chb14/chb14_14
@@ -10,7 +14,3 @@
 ../../clean_signals/chb14/chb14_22
 ../../clean_signals/chb14/chb14_24
 ../../clean_signals/chb14/chb14_25
-../../clean_signals/chb14/chb14_03
-../../clean_signals/chb14/chb14_04
-../../clean_signals/chb14/chb14_06
-../../clean_signals/chb14/chb14_11

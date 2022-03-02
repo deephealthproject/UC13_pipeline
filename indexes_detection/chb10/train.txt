@@ -6,10 +6,10 @@
 ../../clean_signals/chb10/chb10_06
 ../../clean_signals/chb10/chb10_07
 ../../clean_signals/chb10/chb10_08
+../../clean_signals/chb10/chb10_12
 ../../clean_signals/chb10/chb10_13
 ../../clean_signals/chb10/chb10_14
 ../../clean_signals/chb10/chb10_15
-../../clean_signals/chb10/chb10_12
 ../../clean_signals/chb10/chb10_20
 ../../clean_signals/chb10/chb10_27
 ../../clean_signals/chb10/chb10_30

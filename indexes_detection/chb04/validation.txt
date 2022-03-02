@@ -1,6 +1,6 @@
+../../clean_signals/chb04/chb04_08
 ../../clean_signals/chb04/chb04_30
 ../../clean_signals/chb04/chb04_31
 ../../clean_signals/chb04/chb04_32
 ../../clean_signals/chb04/chb04_33
 ../../clean_signals/chb04/chb04_34
-../../clean_signals/chb04/chb04_08

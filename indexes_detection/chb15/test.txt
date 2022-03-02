@@ -2,8 +2,8 @@
 ../../clean_signals/chb15/chb15_45
 ../../clean_signals/chb15/chb15_50
 ../../clean_signals/chb15/chb15_51
-../../clean_signals/chb15/chb15_61
-../../clean_signals/chb15/chb15_63
 ../../clean_signals/chb15/chb15_52
 ../../clean_signals/chb15/chb15_54
+../../clean_signals/chb15/chb15_61
 ../../clean_signals/chb15/chb15_62
+../../clean_signals/chb15/chb15_63

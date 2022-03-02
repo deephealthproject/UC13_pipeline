@@ -1,3 +1,5 @@
+../../clean_signals/chb01/chb01_21
+../../clean_signals/chb01/chb01_26
 ../../clean_signals/chb01/chb01_37
 ../../clean_signals/chb01/chb01_38
 ../../clean_signals/chb01/chb01_39
@@ -6,5 +8,3 @@
 ../../clean_signals/chb01/chb01_42
 ../../clean_signals/chb01/chb01_43
 ../../clean_signals/chb01/chb01_46
-../../clean_signals/chb01/chb01_21
-../../clean_signals/chb01/chb01_26

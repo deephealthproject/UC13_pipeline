@@ -2,6 +2,7 @@
 ../../clean_signals/chb04/chb04_02
 ../../clean_signals/chb04/chb04_03
 ../../clean_signals/chb04/chb04_04
+../../clean_signals/chb04/chb04_05
 ../../clean_signals/chb04/chb04_06
 ../../clean_signals/chb04/chb04_07
 ../../clean_signals/chb04/chb04_09
@@ -23,4 +24,3 @@
 ../../clean_signals/chb04/chb04_26
 ../../clean_signals/chb04/chb04_27
 ../../clean_signals/chb04/chb04_29
-../clean_signals/chb04/chb04_05

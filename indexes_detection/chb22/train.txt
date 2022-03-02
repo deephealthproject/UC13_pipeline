@@ -14,6 +14,6 @@
 ../../clean_signals/chb22/chb22_17
 ../../clean_signals/chb22/chb22_18
 ../../clean_signals/chb22/chb22_19
+../../clean_signals/chb22/chb22_20
 ../../clean_signals/chb22/chb22_21
 ../../clean_signals/chb22/chb22_22
-../../clean_signals/chb22/chb22_20

@@ -1,5 +1,7 @@
 ../../clean_signals/chb01/chb01_01
 ../../clean_signals/chb01/chb01_02
+../../clean_signals/chb01/chb01_03
+../../clean_signals/chb01/chb01_04
 ../../clean_signals/chb01/chb01_05
 ../../clean_signals/chb01/chb01_06
 ../../clean_signals/chb01/chb01_07
@@ -10,6 +12,8 @@
 ../../clean_signals/chb01/chb01_12
 ../../clean_signals/chb01/chb01_13
 ../../clean_signals/chb01/chb01_14
+../../clean_signals/chb01/chb01_15
+../../clean_signals/chb01/chb01_16
 ../../clean_signals/chb01/chb01_17
 ../../clean_signals/chb01/chb01_19
 ../../clean_signals/chb01/chb01_20
@@ -20,7 +24,3 @@
 ../../clean_signals/chb01/chb01_27
 ../../clean_signals/chb01/chb01_29
 ../../clean_signals/chb01/chb01_30
-../../clean_signals/chb01/chb01_03
-../../clean_signals/chb01/chb01_04
-../../clean_signals/chb01/chb01_15
-../../clean_signals/chb01/chb01_16
