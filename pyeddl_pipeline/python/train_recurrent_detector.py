@@ -69,7 +69,7 @@ def main(args):
 
 
     
-    log_file = open(f'{exp_dir}/training_log.txt', 'w')
+    log_file = open(f'{exp_dir}/training_log.txt', 'w' if resume_dir is None else 'a')
     log_file.write('epoch, train_acc, train_loss, val_acc_single_channel,'
         + ' val_f1score_single_channel, val_acc, val_f1score, val_balanced_acc\n')
     log_file.flush()

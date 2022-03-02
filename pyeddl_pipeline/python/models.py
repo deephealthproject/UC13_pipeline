@@ -22,6 +22,14 @@ def create_model(model_id,
                              lr=lr,
                              opt=opt,
                              gpus=gpus)
+
+    elif model_id == 'lstm2':
+        net = recurrent_LSTM_2(input_shape,
+                             num_classes=num_classes,
+                             filename=filename,
+                             lr=lr,
+                             opt=opt,
+                             gpus=gpus)
                              
     elif model_id == 'gru':
         net = recurrent_GRU(input_shape,
@@ -62,6 +70,66 @@ def recurrent_LSTM(input_shape, num_classes, lr, opt, filename=None, gpus=[1]):
         layer = eddl.LSTM(in_, 256)
         layer = eddl.Flatten(layer)
         layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer,  256), affine=True))
+        #layer = eddl.Softmax(eddl.Dense(layer, num_classes))
+        layer = eddl.Dense(layer, 1)
+        #
+        out_ = eddl.Sigmoid(layer)
+
+        net = eddl.Model([in_], [out_])
+        initialize = True
+    
+    #print(f'{initialize=}')
+
+    if opt == 'adam':
+        optimizer = eddl.adam(lr=lr)
+    elif opt == 'sgd':
+        optimizer = eddl.sgd(lr=lr)
+    else:
+        raise Exception('Optimizer name not valid.')
+
+
+    eddl.build(
+            net,
+            o=optimizer,
+            lo=['binary_cross_entropy'],
+            me=['binary_accuracy'],
+            cs=eddl.CS_GPU(g=gpus, mem='full_mem'),
+            #cs = eddl.CS_CPU(),
+            init_weights=initialize
+            )
+    
+    # Load .eddl file if it is the case
+    if filename is not None and filename.endswith('.eddl'):
+        eddl.load(net, filename)
+
+    eddl.summary(net)
+    
+    return net
+
+
+
+def recurrent_LSTM_2(input_shape, num_classes, lr, opt, filename=None, gpus=[1]):
+
+    if filename is not None and filename.endswith('.onnx'):
+        # Load .onnx file if it is the case
+
+        net = eddl.import_net_from_onnx_file(filename)
+        initialize = False
+
+    else:
+        # Create the model from scratch
+
+        in_ = eddl.Input(input_shape)
+        #
+        layer = eddl.LSTM(in_, 256)
+        layer = eddl.LSTM(layer, 256)
+        layer = eddl.Flatten(layer)
+        layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer,  256), affine=True))
+        layer = eddl.Dropout(layer, 0.5)
+        layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer,  128), affine=True))
+        layer = eddl.Dropout(layer, 0.5)
+        layer = eddl.ReLu(eddl.BatchNormalization(eddl.Dense(layer,  64), affine=True))
+
         #layer = eddl.Softmax(eddl.Dense(layer, num_classes))
         layer = eddl.Dense(layer, 1)
         #
@@ -218,7 +286,6 @@ def build_conv(input_shape, num_classes, lr, opt, filename=None, gpus=[1]):
     eddl.summary(net)
     
     return net
-
 
 
 # ------------------------------------------------------------------------------

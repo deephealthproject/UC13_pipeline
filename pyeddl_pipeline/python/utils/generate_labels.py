@@ -148,7 +148,8 @@ if __name__ == '__main__':
                 else:
                     raise Exception('unrecognized seizure line')
 
-                t = 1 + s // int(subsampling_period.total_seconds())
+                #t = 1 + s // int(subsampling_period.total_seconds())
+                t = int(1 + s // subsampling_period.total_seconds())
                 file_sequence[-1]['labels'][t:] = l
 
         f.close()
