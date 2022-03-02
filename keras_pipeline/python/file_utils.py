@@ -255,8 +255,8 @@ def load_file(filename, exclude_seizures = False,
         if episodes is not None:
             for boundaries in episodes:
                 labels[boundaries[0] : boundaries[1] + 1] = 1
-        else:
-            data_pieces.append((_signal, labels))
+        
+        data_pieces.append((_signal, labels))
     #
     return data_pieces
 

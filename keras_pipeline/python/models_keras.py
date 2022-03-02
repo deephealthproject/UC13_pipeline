@@ -4,7 +4,7 @@
 
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense, Activation, Flatten, BatchNormalization
-from tensorflow.keras.layers import LSTM, GRU
+from tensorflow.keras.layers import LSTM, GRU, Concatenate, Add
 from tensorflow.keras.layers import GaussianNoise
 from tensorflow.keras.layers import Conv2D, DepthwiseConv2D, Reshape
 from tensorflow.python.keras.layers.core import Dropout, SpatialDropout2D
@@ -27,6 +27,8 @@ def create_model(model_id, input_shape, num_classes):
         model = build_conv(input_shape, num_classes)
     elif model_id == 'conv2':
         model = build_conv_paper(input_shape, num_classes)
+    elif model_id == 'multi-lstm':
+        model = build_lstm_multichannel(input_shape)
 
     return model
 
@@ -173,6 +175,36 @@ def build_conv_paper(input_shape, num_classes):
     model = Model(in_, out_)
 
     return model
+
+
+
+def build_lstm_multichannel(input_shape, num_channels=23):
+
+    in_ = Input(shape=input_shape)
+    
+    branches = list() # List to store the tensors of the different branches
+    
+    for _ in range(num_channels):
+        layer = LSTM(256)(in_)
+        layer = Flatten()(layer)
+        branches.append(layer)
+    
+    layer = Add()(branches)
+
+    layer = Dense(256, activation=None)(layer)
+    layer = BatchNormalization()(layer)
+    layer = Activation('relu')(layer)
+
+    layer = Dense(64, activation=None)(layer)
+    layer = BatchNormalization()(layer)
+    layer = Activation('relu')(layer)
+
+    layer = Dense(1, activation=None)(layer)
+    
+    out_ = Activation('sigmoid')(layer)
+
+    return Model(in_, out_)
+
 
 
 
